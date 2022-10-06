@@ -1,11 +1,10 @@
 package io.github.gafarrell.commands;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public abstract class SQLCommand {
-    protected ArrayList<String> parameters = new ArrayList<>();
+    protected List<String> parameters = new ArrayList<>();
 
-    public SQLCommand(){}
-
-    public abstract boolean execute();
+    public abstract boolean execute() throws Exception;
 }

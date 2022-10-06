@@ -17,10 +17,22 @@ public abstract class SQLColumn<T> {
 
     }
 
-    public void attachColumn(SQLColumn nextColumn, SQLColumn prevColumn){
+    public void attachColumn(SQLColumn prevColumn, SQLColumn nextColumn){
         nextColumn.prevColumn = this;
         prevColumn.nextColumn = this;
     }
 
+    public void setNextColumn(SQLColumn nextColumn) {
+        if (this.nextColumn != null) this.nextColumn.prevColumn = nextColumn;
+        this.nextColumn = nextColumn;
+    }
 
+    public void setPrevColumn(SQLColumn prevColumn) {
+        if (this.prevColumn != null) this.prevColumn.nextColumn = nextColumn;
+        this.prevColumn = prevColumn;
+    }
+
+    public String getTitle() {
+        return title;
+    }
 }
