@@ -1,8 +1,6 @@
 package io.github.gafarrell.database;
 
 import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -63,6 +61,10 @@ public class DatabaseConnector {
             activeDatabases.putIfAbsent(f.getName(), new Database(f));
         }
         System.out.println("\tSuccessfully loaded " + activeDatabases.keySet().size() + " database(s)");
+    }
+
+    public boolean isUsing(){
+        return current != null;
     }
 
     public boolean use(String name) throws Exception {

@@ -13,9 +13,18 @@ public class SelectCmd extends SQLCommand {
 
     @Override
     public boolean execute() throws Exception {
+        if (!DatabaseConnector.getInstance().isUsing()){
+            System.out.println("!Failed: No database currently being used.");
+            return false;
+        }
         if (parameters.get(0).equalsIgnoreCase("*")){
-            DatabaseConnector.getInstance().getCurrent().select();
+            System.out.println(DatabaseConnector.getInstance().getCurrent().selectAll(parameters.get(1)));
         }
         return false;
+    }
+
+    @Override
+    public String getCommandString() {
+        return "SELECT * FROM " + parameters.get(1);
     }
 }

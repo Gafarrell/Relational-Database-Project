@@ -1,13 +1,11 @@
 package io.github.gafarrell.commands.creation;
 
 import io.github.gafarrell.commands.SQLCommand;
-import io.github.gafarrell.database.Database;
 import io.github.gafarrell.database.DatabaseConnector;
 import io.github.gafarrell.database.column.FloatColumn;
 import io.github.gafarrell.database.column.IntColumn;
 import io.github.gafarrell.database.column.SQLColumn;
 import io.github.gafarrell.database.column.StringColumn;
-import io.github.gafarrell.database.Table;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +25,10 @@ public class TableCreateCmd extends SQLCommand {
     }
 
     public boolean execute() throws Exception {
+        if (!DatabaseConnector.getInstance().isUsing()){
+            System.out.println("!Failed: No database currently being used.");
+            return false;
+        }
         ArrayList<SQLColumn> columns = new ArrayList<>();
 
         for (String s : subargs){
@@ -38,8 +40,9 @@ public class TableCreateCmd extends SQLCommand {
                 case "int":
                     columns.add(new IntColumn(s));
                     break;
+                case "char":
                 case "varchar":
-                    columns.add(new StringColumn(columnData[0] + " " + columnData[1], Integer.parseInt(columnData[2])));
+                    columns.add(new StringColumn(s, Integer.parseInt(columnData[2])));
                     break;
                 default:
                     return false;
@@ -47,11 +50,20 @@ public class TableCreateCmd extends SQLCommand {
         }
 
         if (DatabaseConnector.getInstance().getCurrent().addTable(tableName, columns)){
-            System.out.println("Successfully created table " + tableName);
+            System.out.println("Table " + tableName + " created.");
             return true;
         }
-        System.out.println("Unable to create table " + tableName);
-        return false;
+        throw new Exception("!Failed to create table " + tableName + " because it already exists.");
+    }
+
+    @Override
+    public String getCommandString() {
+        StringBuilder cmdStringBuilder = new StringBuilder();
+        cmdStringBuilder.append("CREATE TABLE ").append(tableName).append(' ');
+        for (String s : subargs){
+            cmdStringBuilder.append(s).append(" ");
+        }
+        return cmdStringBuilder.toString();
     }
 
     public String getTableName(){return tableName;}

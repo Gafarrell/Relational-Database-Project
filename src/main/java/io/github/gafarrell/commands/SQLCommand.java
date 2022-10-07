@@ -7,4 +7,5 @@ public abstract class SQLCommand {
     protected List<String> parameters = new ArrayList<>();
 
     public abstract boolean execute() throws Exception;
+    public abstract String getCommandString();
 }

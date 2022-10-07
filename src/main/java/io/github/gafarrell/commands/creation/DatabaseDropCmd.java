@@ -5,9 +5,9 @@ import io.github.gafarrell.database.DatabaseConnector;
 
 import java.util.List;
 
-public class DatabaseRemoveCmd extends SQLCommand {
+public class DatabaseDropCmd extends SQLCommand {
 
-    public DatabaseRemoveCmd(List<String> args) throws Exception {
+    public DatabaseDropCmd(List<String> args) throws Exception {
         this.parameters = args;
     }
 
@@ -21,5 +21,10 @@ public class DatabaseRemoveCmd extends SQLCommand {
             System.out.println("Failed! Database " + parameters.get(0) + " was unable to be dropped.");
 
         return false;
+    }
+
+    @Override
+    public String getCommandString() {
+        return null;
     }
 }

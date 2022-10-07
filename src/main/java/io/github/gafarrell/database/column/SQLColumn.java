@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public abstract class SQLColumn<T> {
     private SQLColumn nextColumn, prevColumn;
-    private String title;
+    protected String title;
     private final ArrayList<T> data = new ArrayList<>();
     private int columnLength;
 
@@ -61,19 +61,33 @@ public abstract class SQLColumn<T> {
     public String getAllValues(){
         if (this.prevColumn != null) return prevColumn.getAllValues();
         StringBuilder valueString = new StringBuilder();
+        getAllTitles(valueString);
         for (int i = 0; i < columnLength; i++){
             valueString.append(getDataRow(valueString, i));
         }
         return valueString.toString();
     }
 
+    private void getAllTitles(StringBuilder infoString){
+        if (nextColumn != null) {
+            infoString.append(title).append(" | ");
+            nextColumn.getAllTitles(infoString);
+            return;
+        }
+        infoString.append(title);
+    }
+
     private StringBuilder getDataRow(StringBuilder valueString, int row){
-        valueString.append(data.get(row)).append(" | ");
-        if (nextColumn != null) return valueString.append(nextColumn.getDataRow(valueString, row));
+        valueString.append(data.get(row));
+        if (nextColumn != null) return valueString.append(" | ").append(nextColumn.getDataRow(valueString, row));
         return valueString.append("\n");
     }
 
     public String getTitle() {
-        return title;
+        return title.trim();
+    }
+
+    public int getColumnLength() {
+        return columnLength;
     }
 }
