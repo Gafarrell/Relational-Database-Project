@@ -1,22 +1,28 @@
 package io.github.gafarrell.database;
 
+import io.github.gafarrell.database.column.SQLColumn;
+
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Database {
-    private File dbDirectory;
+    private String dbName;
     private HashMap<String, Table> tables = new HashMap<>();
 
     public Database(String dbName) throws Exception {
         if (dbName.matches("[\\\\|/]")) throw new Exception("Invalid db name!");
 
-        this.dbDirectory = new File("databases/" + dbName);
+        this.dbName = dbName;
+        File dbFile = new File("databases/" + dbName);
 
-        if (dbDirectory.exists()) {
+        if (dbFile.exists()) {
             throw new Exception("!Failed Database " + dbName + " already exists!");
         }
         else{
-            if (!dbDirectory.mkdirs()) throw new Exception("Unable to create directory " + dbDirectory.getName());
+            if (!Files.createDirectory(dbFile.toPath()).toFile().exists()) throw new Exception("Unable to create directory " + this.dbName);
         }
     }
 
@@ -30,30 +36,33 @@ public class Database {
 
         for (File table : directories) {
             if (tables.containsKey(table.getPath()))
-                throw new Exception("Unable to load table, table " + table.getName() + " already exists in database " + dbDirectory.getName());
+                throw new Exception("Unable to load table, table " + table.getName() + " already exists in database " + dbName);
             tables.put(table.getName().substring(0, table.getName().length() - 4), new Table(table, this));
         }
 
-        dbDirectory = f;
+        dbName = f.getName();
     }
 
-    public boolean createTable(Table t) throws Exception {
-        System.out.println("Create table for datbase " + dbDirectory.getName());
-        File tableFile = new File(dbDirectory + "/" + t.getName() + ".csv");
-        if (!tableFile.createNewFile()) throw new Exception("Table " + t.getName() + " already exists in datbase " + dbDirectory.getName());
-        else
-            System.out.println("Created file " + tableFile.getPath());
-        return this.tables.putIfAbsent(t.getName(), t) == null;
+    public boolean addTable(String name, ArrayList<SQLColumn> columns) throws Exception {
+        return this.tables.putIfAbsent(name, new Table(name, columns, this)) == null;
+    }
+
+    public String select(String from, String where, String equals){
+        if (tables.containsKey(from)){
+            return tables.get(from).select(where, equals);
+        }
+        else return "Table " + from + " does not exist in database " + dbName;
     }
 
     public boolean drop() throws Exception {
         for (Table t : tables.values()){
             if (!t.drop()) throw new Exception("Table " + t.getName() + " was unable to be dropped. Cancelling DB drop.");
         }
-        return dbDirectory.delete();
+        return Files.deleteIfExists(Path.of("databases/" + dbName));
     }
 
-    public File getDbDirectory() {
-        return dbDirectory;
+    public String getDbName() {
+        return dbName;
     }
+    public String getDbDirectory(){return "databases/" + dbName + "/";}
 }

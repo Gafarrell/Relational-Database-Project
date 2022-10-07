@@ -8,4 +8,9 @@ public class StringColumn extends SQLColumn<String>{
         super(title);
         this.size = size;
     }
+
+    @Override
+    public String getTitle() {
+        return super.getTitle() + " " + size;
+    }
 }

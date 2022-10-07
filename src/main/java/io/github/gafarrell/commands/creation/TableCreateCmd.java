@@ -15,44 +15,43 @@ import java.util.List;
 public class TableCreateCmd extends SQLCommand {
 
     private String tableName;
-    private List<String> subargs;
+    private List<String> subargs = new ArrayList<>();
 
 
     public TableCreateCmd(ArrayList<String> args)
     {
         if (args.size() < 1) throw new RuntimeException("Invalid command parameters!");
-        tableName = args.get(0);
-        subargs = args.subList(1, args.size());
+        tableName = args.get(args.size()-1);
+        if (args.size() > 1)
+            subargs = args.subList(0, args.size()-1);
     }
 
     public boolean execute() throws Exception {
-        System.out.println("Executing table creation...");
         ArrayList<SQLColumn> columns = new ArrayList<>();
 
-        if (subargs.size() != 0) System.out.println("Adding columns...");
         for (String s : subargs){
-            String[] columnData = s.split(" ");
+            String[] columnData = s.trim().split(" ");
             switch (columnData[1].toLowerCase()){
                 case "float":
-                    columns.add(new FloatColumn(columnData[0]));
-                    System.out.println("Adding float column...");
+                    columns.add(new FloatColumn(s));
                     break;
                 case "int":
-                    columns.add(new IntColumn(columnData[0]));
-                    System.out.println("Adding integer column...");
+                    columns.add(new IntColumn(s));
                     break;
                 case "varchar":
-                    columns.add(new StringColumn(columnData[0], Integer.parseInt(columnData[2])));
-                    System.out.println("Adding string column...");
+                    columns.add(new StringColumn(columnData[0] + " " + columnData[1], Integer.parseInt(columnData[2])));
                     break;
                 default:
                     return false;
             }
         }
-        System.out.println("Done adding columns...");
-        Table table = new Table(tableName, columns, DatabaseConnector.getInstance().getCurrent());
-        System.out.println("Exited table constructor");
-        return DatabaseConnector.getInstance().getCurrent().createTable(table);
+
+        if (DatabaseConnector.getInstance().getCurrent().addTable(tableName, columns)){
+            System.out.println("Successfully created table " + tableName);
+            return true;
+        }
+        System.out.println("Unable to create table " + tableName);
+        return false;
     }
 
     public String getTableName(){return tableName;}

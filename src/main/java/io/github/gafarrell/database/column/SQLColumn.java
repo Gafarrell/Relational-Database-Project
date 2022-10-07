@@ -1,20 +1,17 @@
 package io.github.gafarrell.database.column;
 
+import java.io.BufferedWriter;
 import java.util.ArrayList;
 
 public abstract class SQLColumn<T> {
     private SQLColumn nextColumn, prevColumn;
     private String title;
     private final ArrayList<T> data = new ArrayList<>();
+    private int columnLength;
 
     public SQLColumn(String title)
     {
         this.title = title;
-    }
-
-    public void Insert(T data)
-    {
-
     }
 
     public void attachColumn(SQLColumn prevColumn, SQLColumn nextColumn){
@@ -30,6 +27,50 @@ public abstract class SQLColumn<T> {
     public void setPrevColumn(SQLColumn prevColumn) {
         if (this.prevColumn != null) this.prevColumn.nextColumn = nextColumn;
         this.prevColumn = prevColumn;
+    }
+
+    public void addData(T data){
+        incrementLength();
+    }
+
+    public void removeData(T data){
+        decrementLength();
+    }
+
+    private void adjustLengthBack(int amount){
+        columnLength += amount;
+        if (prevColumn != null) prevColumn.adjustLengthBack(amount);
+    }
+    private void adjustLengthForward(int amount){
+        columnLength += amount;
+        if (prevColumn != null) nextColumn.adjustLengthForward(amount);
+    }
+
+    public void incrementLength(){
+        if (prevColumn != null) prevColumn.adjustLengthBack(1);
+        if (nextColumn != null) nextColumn.adjustLengthForward(1);
+        columnLength++;
+    }
+
+    public void decrementLength(){
+        if (prevColumn != null) prevColumn.adjustLengthBack(-1);
+        if (nextColumn != null) nextColumn.adjustLengthForward(-1);
+        columnLength--;
+    }
+
+    public String getAllValues(){
+        if (this.prevColumn != null) return prevColumn.getAllValues();
+        StringBuilder valueString = new StringBuilder();
+        for (int i = 0; i < columnLength; i++){
+            valueString.append(getDataRow(valueString, i));
+        }
+        return valueString.toString();
+    }
+
+    private StringBuilder getDataRow(StringBuilder valueString, int row){
+        valueString.append(data.get(row)).append(" | ");
+        if (nextColumn != null) return valueString.append(nextColumn.getDataRow(valueString, row));
+        return valueString.append("\n");
     }
 
     public String getTitle() {

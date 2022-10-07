@@ -14,26 +14,40 @@ import java.util.List;
 public class Table {
     private String name;
     private Database parentDatabase;
-    private File tableFile;
     private ArrayList<SQLColumn> columns = new ArrayList<>();
 
-    public Table(String name, ArrayList<SQLColumn> columns, Database parent){
-        System.out.println("Entered table constructor");
+    public Table(String name, ArrayList<SQLColumn> columns, Database parent) throws Exception {
         this.name = name;
-        this.columns = columns;
         this.parentDatabase = parent;
-        tableFile = new File("databases/" + parent.getDbDirectory() + "/" + name + ".csv");
+        this.columns = columns;
+
+        File file = new File(parent.getDbDirectory() + name + ".csv");
+        if (!file.createNewFile()) throw new Exception("Table " + name + " already exists in database " + parent.getDbName());
+
+        if (columns == null || columns.isEmpty()) {
+            return;
+        }
+        BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+
+        for (SQLColumn column : columns){
+            writer.write(column.getTitle() + ",");
+        }
+        writer.write("\n");
+        writer.close();
     }
 
     Table(File f, Database parentDatabase) throws IOException {
         this.parentDatabase = parentDatabase;
-        tableFile = f;
         name = f.getName().substring(0, f.getName().length()-4);
 
         BufferedReader reader = new BufferedReader(new FileReader(f));
 
         String line = reader.readLine();
-        if (line == null) return;
+
+        if (line == null) {
+            reader.close();
+            return;
+        }
         List<String> columns = Arrays.stream(line.split(",")).toList();
 
         for (String column : columns){
@@ -60,7 +74,7 @@ public class Table {
     }
 
     public boolean drop(){
-        if (tableFile == null) return true;
+        File tableFile = new File("databases/" + parentDatabase.getDbName() + "/" + name + ".csv");
         if (tableFile.exists()){
             try {
                 Files.delete(tableFile.toPath());
@@ -78,7 +92,16 @@ public class Table {
         for (SQLColumn column : columns){
             infoString.append(column.getTitle()).append(" | ");
         }
-
+        infoString.append('\n');
         return infoString.toString();
+    }
+
+    public String select(String where, String equals){
+        StringBuilder selection = new StringBuilder();
+        selection.append(this);
+        if (where.equalsIgnoreCase("*")){
+            selection.append(columns.get(0).getAllValues());
+        }
+        return selection.toString();
     }
 }

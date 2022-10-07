@@ -4,6 +4,7 @@ import io.github.gafarrell.commands.SQLCommand;
 import io.github.gafarrell.commands.creation.DatabaseCreateCmd;
 import io.github.gafarrell.commands.creation.DatabaseRemoveCmd;
 import io.github.gafarrell.commands.creation.TableCreateCmd;
+import io.github.gafarrell.commands.query.SelectCmd;
 import io.github.gafarrell.database.DatabaseConnector;
 
 import java.io.*;
@@ -32,7 +33,6 @@ public class SQLScriptParser {
     }
 
     public SQLScriptParser(String s) throws Exception {
-        System.out.println("Reading: " + s);
         Matcher parameters = variableExtractor.matcher(s);
         ArrayList<String> variables = new ArrayList<>();
 
@@ -41,7 +41,7 @@ public class SQLScriptParser {
             variables = new ArrayList<>(Arrays.asList(vars));
             s = parameters.replaceAll("");
             for (int i = 0; i < variables.size(); i++){
-                variables.set(i, variables.get(i).replace("(","").replace(")",""));
+                variables.set(i, variables.get(i).replace("("," ").replace(")"," ").trim());
             }
         }
 
@@ -57,9 +57,7 @@ public class SQLScriptParser {
                 case "CREATE":
                     if (cmdTokens.size() != 3) return;
                     if (cmdTokens.get(1).group().equalsIgnoreCase("table")) {
-                        System.out.println("Adding variables...");
                         variables.add(cmdTokens.get(2).group());
-                        System.out.println("Creating table...");
                         commands.add(new TableCreateCmd(variables));
                     }
                     if (cmdTokens.get(1).group().equalsIgnoreCase("database")) {
@@ -75,13 +73,19 @@ public class SQLScriptParser {
                     break;
                 case "DROP":
                     if (cmdTokens.get(1).group().equalsIgnoreCase("database")){
-                        System.out.println("Dropping DB");
                         variables.add(cmdTokens.get(2).group());
                         commands.add(new DatabaseRemoveCmd(variables));
                     }
                     break;
 
                 case "SELECT":
+                    if (cmdTokens.get(1).group().equalsIgnoreCase("*")){
+                        if (cmdTokens.get(2).group().equalsIgnoreCase("from")){
+                            variables.add("*");
+                            variables.add(cmdTokens.get(3).group());
+                            commands.add(new SelectCmd(variables));
+                        }
+                    }
                 case "ALTER":
                     System.out.println("Command not yet implemented!");
                     break;

@@ -74,7 +74,7 @@ public class DatabaseConnector {
     }
 
     public boolean createDatabase(String name) throws Exception {
-        File file = new File("datbases/" + name);
+        File file = new File("databases/" + name);
         if (file.exists()) return false;
 
         return (activeDatabases.putIfAbsent(name, new Database(name)) == null);
@@ -83,7 +83,8 @@ public class DatabaseConnector {
 
     public boolean dropDatabase(String name) throws Exception {
         if (activeDatabases.containsKey(name)){
-            return activeDatabases.get(name).drop();
+            activeDatabases.get(name).drop();
+            return activeDatabases.remove(name) != null;
         }
         else return false;
     }
