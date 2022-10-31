@@ -6,21 +6,23 @@ import io.github.gafarrell.database.DatabaseConnector;
 import java.util.List;
 
 public class TableDropCmd extends SQLCommand {
-    public TableDropCmd(List<String> parameters){
-        this.parameters = parameters;
+
+    private String dbName;
+
+    public TableDropCmd(String dbName){
+        this.dbName = dbName;
     }
 
     @Override
     public boolean execute() throws Exception {
 
-        if (!DatabaseConnector.getInstance().isUsing()){
+        if (DatabaseConnector.getInstance().notUsingDB()){
             System.out.println("!Failed: No database currently being used.");
             return false;
         }
 
-        if (parameters.size() != 1) throw new Exception("!Failed: Parameters are not valid for table drop.");
-        if (DatabaseConnector.getInstance().getCurrent().dropTable(parameters.get(0))){
-            System.out.println("Table " + parameters.get(0) + " deleted.");
+        if (DatabaseConnector.getInstance().getCurrent().dropTable(dbName)){
+            System.out.println("Table " + dbName + " deleted.");
             return true;
         }
         return false;

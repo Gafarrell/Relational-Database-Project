@@ -13,14 +13,14 @@ import java.util.List;
 public class TableAlterCmd extends SQLCommand {
     private String tableToEdit;
 
-    public TableAlterCmd(List<String> params) throws Exception {
-        this.tableToEdit = params.get(0);
-        this.parameters = params.subList(1, params.size());
+    public TableAlterCmd(String tableName, List<String> alterParams) throws Exception {
+        this.tableToEdit = tableName;
+        this.parameters = alterParams;
     }
 
     @Override
     public boolean execute() throws Exception {
-        if (!DatabaseConnector.getInstance().isUsing()){
+        if (DatabaseConnector.getInstance().notUsingDB()){
             System.out.println("!Failed: No database currently being used.");
             return false;
         }

@@ -12,12 +12,14 @@ public class DatabaseConnector {
     private static HashMap<String, Database> activeDatabases = new HashMap<>();
     private Database current;
 
-    public static void initialize() throws Exception {
+    // Initializes the database connector singleton.
+    public static void Initialize() throws Exception {
         if (instance == null){
             instance = new DatabaseConnector();
         }
     }
 
+    // Gets an instance of the database connector.
     public static DatabaseConnector getInstance() throws Exception {
         if (instance == null){
             instance = new DatabaseConnector();
@@ -25,6 +27,8 @@ public class DatabaseConnector {
         return instance;
     }
 
+    // Reads the files from the database directory and loads the data from internal files.
+    // Alternatively will initialize the database directory if it does not already exist.
     private DatabaseConnector() throws Exception {
         File dbGlobalDir = new File("databases/");
 
@@ -63,10 +67,12 @@ public class DatabaseConnector {
         System.out.println("\tSuccessfully loaded " + activeDatabases.keySet().size() + " database(s)");
     }
 
-    public boolean isUsing(){
-        return current != null;
+    // Boolean for if the database connector is currently using a database.
+    public boolean notUsingDB(){
+        return current == null;
     }
 
+    // Uses a specified DB
     public boolean use(String name) throws Exception {
         if (activeDatabases.containsKey(name)) {
             current = activeDatabases.get(name);
@@ -75,6 +81,7 @@ public class DatabaseConnector {
         throw new Exception("!Failed database " + name + " does not exist!");
     }
 
+    // Creates a specified DB.
     public boolean createDatabase(String name) throws Exception {
         File file = new File("databases/" + name);
         if (file.exists()) return false;
@@ -83,6 +90,7 @@ public class DatabaseConnector {
     }
 
 
+    // Drops a specified DB.
     public boolean dropDatabase(String name) throws Exception {
         if (activeDatabases.containsKey(name)){
             activeDatabases.get(name).drop();
@@ -91,6 +99,7 @@ public class DatabaseConnector {
         else return false;
     }
 
+    // Gets the currently used DB.
     public Database getCurrent() {
         return current;
     }

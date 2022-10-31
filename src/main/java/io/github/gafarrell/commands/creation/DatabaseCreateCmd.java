@@ -7,24 +7,26 @@ import java.util.List;
 
 public class DatabaseCreateCmd extends SQLCommand {
 
-    public DatabaseCreateCmd(List<String> parameters){
-        this.parameters = parameters;
+    private String dbName;
+
+    public DatabaseCreateCmd(String dbName){
+        this.dbName = dbName;
     }
 
     @Override
     public boolean execute() throws Exception {
-        if (DatabaseConnector.getInstance().createDatabase(parameters.get(0))){
-            System.out.println("Database " + parameters.get(0) + " created.");
+        if (DatabaseConnector.getInstance().createDatabase(dbName)){
+            System.out.println("Database " + dbName + " created.");
             return true;
         }
         else
-            System.out.println("!Failed to create database " + parameters.get(0) + " because it already exists.");
+            System.out.println("!Failed to create database " + dbName + " because it already exists.");
 
         return false;
     }
 
     @Override
     public String getCommandString() {
-        return "CREATE DATABASE " + parameters.get(0);
+        return "CREATE DATABASE " + dbName;
     }
 }

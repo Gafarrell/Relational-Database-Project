@@ -4,6 +4,13 @@ import java.io.BufferedWriter;
 import java.util.ArrayList;
 
 public abstract class SQLColumn<T> {
+    public enum ColumnType{
+        DATE_TIME,
+        FLOAT,
+        INT,
+        STRING
+    }
+
     private SQLColumn nextColumn, prevColumn;
     protected String title;
     private final ArrayList<T> data = new ArrayList<>();
@@ -30,11 +37,9 @@ public abstract class SQLColumn<T> {
     }
 
     public void addData(T data){
-        incrementLength();
     }
 
     public void removeData(T data){
-        decrementLength();
     }
 
     private void adjustLengthBack(int amount){
@@ -90,4 +95,7 @@ public abstract class SQLColumn<T> {
     public int getColumnLength() {
         return columnLength;
     }
+
+    public abstract ColumnType getType();
+    public abstract void insert(T data);
 }

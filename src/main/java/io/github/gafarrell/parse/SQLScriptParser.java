@@ -20,20 +20,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SQLScriptParser {
-    private static Pattern sqlTokenizer = Pattern.compile("([\\w\\d*]+)+;?");
-    private static Pattern variableExtractor = Pattern.compile("\\((.+)\\)");
-    private static Pattern alterVariableExtractor = Pattern.compile(" ([\\w\\d]+) (ADD|DROP) (.+)");
 
-    private BufferedReader reader;
-    private File fileToParse;
-    private ArrayList<SQLCommand> commands = new ArrayList<>();
+    private enum SQLCommandTokenizer{
+
+        CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+) \\(?(.+)?\\)?")),
+        USE(Pattern.compile("USE (.+)")),
+        DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)")),
+        SELECT(Pattern.compile("SELECT \\* FROM (.+)")),
+        ALTER(Pattern.compile("ALTER TABLE (.+) ADD (.+)"));
+
+        public final Pattern pattern;
+        SQLCommandTokenizer(Pattern pattern){this.pattern = pattern;}
+    }
+
+    private final ArrayList<SQLCommand> commands = new ArrayList<>();
 
     public SQLScriptParser(File file) throws Exception {
         System.out.println("Parsing file.");
-        fileToParse = file;
         if (file.exists())
         {
-            reader = new BufferedReader(new FileReader(fileToParse));
+            BufferedReader reader = new BufferedReader(new FileReader(file));
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.equalsIgnoreCase(".exit")){
@@ -56,85 +62,43 @@ public class SQLScriptParser {
     }
 
     private void parseCommand(String s) throws Exception {
-        ArrayList<String> variables = new ArrayList<>();
-        Matcher parameters = variableExtractor.matcher(s);
-
-        Matcher alterMatcher = alterVariableExtractor.matcher(s.toUpperCase());
-        if (alterMatcher.find()){
-            variables.add(s.substring(alterMatcher.start(1), alterMatcher.end(1)));
-            variables.add(alterMatcher.group(2));
-            variables.addAll(Arrays.asList(s.substring(alterMatcher.start(3), alterMatcher.end(3)).replace("(", " ").replace(")", "").split(",")));
-            s = s.substring(0, 12).trim();
-        }
-        else if (parameters.find()) {
-            String[] vars = parameters.toMatchResult().group(1).split(",");
-            variables = new ArrayList<>(Arrays.asList(vars));
-            s = parameters.replaceAll("");
-            for (int i = 0; i < variables.size(); i++){
-                variables.set(i, variables.get(i).replace("("," ").replace(")"," ").trim());
-            }
-        }
-
-        Matcher command = sqlTokenizer.matcher(s);
+        for (SQLCommandTokenizer tokenizer : SQLCommandTokenizer.values()){
+            Matcher matcher = tokenizer.pattern.matcher(s);
+            if (!matcher.matches()) continue;
 
 
-        if (!command.results().toList().isEmpty()){
-            command.reset();
-            List<MatchResult> cmdTokens = command.results().toList();
+            switch (tokenizer){
+                case USE -> {
+                    String dbName = matcher.group(1);
+                    commands.add(new UseCmd(dbName));
+                }
 
-            switch (cmdTokens.get(0).group().toUpperCase()){
-                case "CREATE":
-                    if (cmdTokens.size() != 3) return;
-                    if (cmdTokens.get(1).group().equalsIgnoreCase("table")) {
-                        variables.add(cmdTokens.get(2).group());
-                        commands.add(new TableCreateCmd(variables));
-                    }
-                    else if (cmdTokens.get(1).group().equalsIgnoreCase("database")) {
-                        variables.add(cmdTokens.get(2).group());
-                        commands.add(new DatabaseCreateCmd(variables));
-                    }
-                    else {
-                        System.out.println("!Failed: Invalid command syntax");
-                    }
-                    break;
+                case DROP -> {
+                    if (matcher.group(1).equalsIgnoreCase("database"))
+                        commands.add(new DatabaseDropCmd(matcher.group(3)));
+                    else if (matcher.group(1).equalsIgnoreCase("table"))
+                        commands.add(new TableDropCmd(matcher.group(3)));
+                }
 
-                case "USE":
-                    commands.add(new UseCmd(cmdTokens.get(1).group()));
-                    break;
-                case "DROP":
-                    if (cmdTokens.get(1).group().equalsIgnoreCase("database")){
-                        variables.add(cmdTokens.get(2).group());
-                        commands.add(new DatabaseDropCmd(variables));
-                    }
-                    else if (cmdTokens.get(1).group().equalsIgnoreCase("table")){
-                        variables.add(cmdTokens.get(2).group());
-                        commands.add(new TableDropCmd(variables));
-                    }
-                    else {
-                        System.out.println("!Failed: Invalid command syntax");
-                    }
-                    break;
+                case ALTER -> {
+                    String dbName = matcher.group(1);
+                    List<String> alterParameters = Arrays.asList(matcher.group(2).split(","));
+                    commands.add(new TableAlterCmd(dbName, alterParameters));
+                }
 
-                case "SELECT":
-                    if (cmdTokens.get(1).group().equalsIgnoreCase("*")){
-                        if (cmdTokens.get(2).group().equalsIgnoreCase("from")){
-                            variables.add("*");
-                            variables.add(cmdTokens.get(3).group());
-                            commands.add(new SelectCmd(variables));
-                        }
+                case CREATE -> {
+                    if (matcher.group(1).equalsIgnoreCase("database"))
+                        commands.add(new DatabaseCreateCmd(matcher.group(2)));
+                    else if (matcher.group().equalsIgnoreCase("table")){
+                        String tableName = matcher.group(2);
+                        List<String> parameters = Arrays.asList(matcher.group(3).split(","));
+                        commands.add(new TableCreateCmd(tableName, parameters));
                     }
-                    else {
-                        System.out.println("!Failed: Specified select not yet implemented.");
-                    }
-                    break;
-                case "ALTER":
-                    commands.add(new TableAlterCmd(variables));
-                    break;
-                case "EXIT":
-                    commands.add(new CloseProgramCmd());
-                default:
-                    System.out.println("Command not valid!");
-                    break;
+                }
+
+                case SELECT -> {
+                    commands.add(new SelectCmd(matcher.group(1)));
+                }
             }
         }
     }

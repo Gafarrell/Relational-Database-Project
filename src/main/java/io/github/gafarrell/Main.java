@@ -4,7 +4,6 @@ import io.github.gafarrell.database.DatabaseConnector;
 import io.github.gafarrell.parse.SQLScriptParser;
 
 import java.io.File;
-import java.lang.invoke.SerializedLambda;
 import java.util.Scanner;
 
 public class Main {
@@ -13,13 +12,15 @@ public class Main {
         System.out.println("\tInitializing Databases...");
 
         try {
-            DatabaseConnector.initialize();
+            DatabaseConnector.Initialize();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         System.out.println("\tInitialized and ready!");
         System.out.println("==================================");
+
+        System.out.println("~ Type an SQL query or enter a file path to run a .SQL script file.\n");
 
         if (args.length > 0){
             try {

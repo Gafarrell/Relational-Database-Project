@@ -7,18 +7,20 @@ import java.util.List;
 
 public class DatabaseDropCmd extends SQLCommand {
 
-    public DatabaseDropCmd(List<String> args) throws Exception {
-        this.parameters = args;
+    private String dbName;
+
+    public DatabaseDropCmd(String dbName) throws Exception {
+        this.dbName = dbName;
     }
 
     @Override
     public boolean execute() throws Exception {
-        if (DatabaseConnector.getInstance().dropDatabase(parameters.get(0))){
-            System.out.println("Successfull dropped database " + parameters.get(0) + ".");
+        if (DatabaseConnector.getInstance().dropDatabase(dbName)){
+            System.out.println("Successfull dropped database " + dbName + ".");
             return true;
         }
         else
-            System.out.println("Failed! Database " + parameters.get(0) + " was unable to be dropped.");
+            System.out.println("Failed! Database " + dbName + " was unable to be dropped.");
 
         return false;
     }

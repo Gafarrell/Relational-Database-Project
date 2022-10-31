@@ -13,27 +13,25 @@ import java.util.List;
 public class TableCreateCmd extends SQLCommand {
 
     private String tableName;
-    private List<String> subargs = new ArrayList<>();
+    private List<String> args;
 
 
-    public TableCreateCmd(ArrayList<String> args)
+    public TableCreateCmd(String tableName , List<String> args)
     {
-        if (args.size() < 1) throw new RuntimeException("Invalid command parameters!");
-        tableName = args.get(args.size()-1);
-        if (args.size() > 1)
-            subargs = args.subList(0, args.size()-1);
+        this.tableName = tableName;
+        this.args = args;
     }
 
     public boolean execute() throws Exception {
-        if (!DatabaseConnector.getInstance().isUsing()){
+        if (DatabaseConnector.getInstance().notUsingDB()){
             System.out.println("!Failed: No database currently being used.");
             return false;
         }
         ArrayList<SQLColumn> columns = new ArrayList<>();
 
-        for (String s : subargs){
+        for (String s : args){
             String[] columnData = s.trim().split(" ");
-            switch (columnData[1].toLowerCase()){
+            switch (columnData[1].toLowerCase().trim()){
                 case "float":
                     columns.add(new FloatColumn(s));
                     break;
@@ -60,7 +58,7 @@ public class TableCreateCmd extends SQLCommand {
     public String getCommandString() {
         StringBuilder cmdStringBuilder = new StringBuilder();
         cmdStringBuilder.append("CREATE TABLE ").append(tableName).append(' ');
-        for (String s : subargs){
+        for (String s : args){
             cmdStringBuilder.append(s).append(" ");
         }
         return cmdStringBuilder.toString();
