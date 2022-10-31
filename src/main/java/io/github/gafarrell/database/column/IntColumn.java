@@ -1,18 +1,28 @@
 package io.github.gafarrell.database.column;
 
-public class IntColumn extends SQLColumn<Integer>{
-    public final ColumnType Type = ColumnType.INT;
+import java.util.ArrayList;
+import java.util.List;
+
+public class IntColumn extends SQLColumn{
+    private List<Integer> data;
+
     public IntColumn(String title) {
         super(title);
+        data = new ArrayList<>();
     }
 
     @Override
-    public ColumnType getType() {
-        return Type;
+    public int getColumnSize() {
+        return data.size();
     }
 
     @Override
-    public void insert(Integer data) {
+    public String getDataAtRow(int row) {
+        return data.get(row).toString();
+    }
+
+    @Override
+    public void addData(String data) {
 
     }
 }

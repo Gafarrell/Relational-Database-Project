@@ -104,9 +104,11 @@ public class Database {
      * @param values String formatted data of the data to be added to the table.
      * @throws Exception If the data is unable to be parsed or in the incorrect order.
      */
-    public void insertInto(String tableName, String[] values) throws Exception {
-        if (tables.containsKey(tableName))
+    public void insertInto(String tableName, List<String> values) throws Exception {
+        if (tables.containsKey(tableName)){
+            System.out.println("Table exists, adding values.");
             tables.get(tableName).insertInto(values);
+        }
     }
 
     /**

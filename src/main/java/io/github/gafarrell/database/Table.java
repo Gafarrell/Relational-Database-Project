@@ -65,18 +65,12 @@ public class Table {
         List<String> columns = Arrays.stream(line.split(",")).toList();
 
         for (String column : columns){
-            String[] columnInfo = column.split(" ");
-            switch (columnInfo[1].toLowerCase()){
-                case "int":
-                    this.columns.add(new IntColumn(column));
-                    break;
-                case "float":
-                    this.columns.add(new FloatColumn(column));
-                    break;
-                case "char":
-                case "varchar":
-                    this.columns.add(new StringColumn(column, Integer.parseInt(columnInfo[2])));
-                    break;
+            String parsable = column.replaceAll("[()]", " ").trim();
+            String[] columnInfo = parsable.split(" ");
+            switch (columnInfo[1].toLowerCase()) {
+                case "int" -> this.columns.add(new IntColumn(column));
+                case "float" -> this.columns.add(new FloatColumn(column));
+                case "char", "varchar" -> this.columns.add(new StringColumn(column, Integer.parseInt(columnInfo[2])));
             }
         }
 
@@ -91,41 +85,15 @@ public class Table {
 
     /**
      * Insert data values into the table.
-     * @param value String values of the data to be inserted into the table.
+     * @param values String values of the data to be inserted into the table.
      * @throws Exception If the data is unable to be parsed.
      */
-    public void insertInto(String[] value) throws Exception {
-        if (value.length <= 0) throw new Exception("Values cannot be empty!");
-        if (value.length != columns.size()) throw new Exception("Table size does not match given number of arguments!");
-
-        for (int i = 0; i < columns.size(); i++)
-        {
-            switch (columns.get(i).getType()){
-                case INT -> {
-                    int data = Integer.parseInt(value[i]);
-                    IntColumn column = (IntColumn) columns.get(i);
-                    column.insert(data);
-                }
-
-                case FLOAT -> {
-                    float data = Float.parseFloat(value[i]);
-                    FloatColumn column = (FloatColumn) columns.get(i);
-                    column.insert(data);
-                }
-
-                case STRING -> {
-                    StringColumn column = (StringColumn) columns.get(i);
-                    column.insert(value[i]);
-                }
-
-                case DATE_TIME -> {
-                    SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH);
-                    Date data = formatter.parse(value[i]);
-                    DatetimeColumn column = (DatetimeColumn) columns.get(i);
-                    column.insert(data);
-                }
-            }
-        }
+    public void insertInto(List<String> values) throws Exception {
+        if (values.size() <= 0) throw new Exception("Values cannot be empty!");
+        if (values.size() != columns.size()) throw new Exception("Table size does not match given number of arguments!");
+        System.out.println("Inserting values to the columns.");
+        SQLColumn firstColumn = columns.get(0);
+        firstColumn.insert(values);
     }
 
     /**
@@ -238,8 +206,18 @@ public class Table {
      */
     public String selectAll(){
         StringBuilder infoString = new StringBuilder();
+
+        for (SQLColumn column : columns){
+            infoString.append(column.getTitle()).append(" | ");
+        }
+
         if (columns.size() > 0) {
-            infoString.append(columns.get(0).getAllValues());
+            for (int i = 0; i < columns.get(0).getColumnSize(); i++){
+                for (SQLColumn column : columns)
+                    infoString.append("\n")
+                                .append(column.getDataAtRow(i))
+                                .append(" | ");
+            }
         }
         return infoString.toString();
     }

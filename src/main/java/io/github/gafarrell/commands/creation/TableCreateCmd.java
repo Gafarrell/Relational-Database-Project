@@ -27,10 +27,12 @@ public class TableCreateCmd extends SQLCommand {
             System.out.println("!Failed: No database currently being used.");
             return false;
         }
+
         ArrayList<SQLColumn> columns = new ArrayList<>();
 
         for (String s : args){
-            String[] columnData = s.trim().split(" ");
+            String parsable = s.replaceAll("[()]", " ");
+            String[] columnData = parsable.trim().split(" ");
             switch (columnData[1].toLowerCase().trim()){
                 case "float":
                     columns.add(new FloatColumn(s));

@@ -6,6 +6,7 @@ import io.github.gafarrell.commands.creation.DatabaseCreateCmd;
 import io.github.gafarrell.commands.creation.DatabaseDropCmd;
 import io.github.gafarrell.commands.creation.TableCreateCmd;
 import io.github.gafarrell.commands.creation.TableDropCmd;
+import io.github.gafarrell.commands.modification.InsertCmd;
 import io.github.gafarrell.commands.modification.TableAlterCmd;
 import io.github.gafarrell.commands.query.SelectCmd;
 import io.github.gafarrell.commands.query.UseCmd;
@@ -23,11 +24,12 @@ public class SQLScriptParser {
 
     private enum SQLCommandTokenizer{
 
-        CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+) \\(?(.+)?\\)?")),
-        USE(Pattern.compile("USE (.+)")),
-        DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)")),
-        SELECT(Pattern.compile("SELECT \\* FROM (.+)")),
-        ALTER(Pattern.compile("ALTER TABLE (.+) ADD (.+)"));
+        CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+?)( \\((.+)\\)|$)", Pattern.CASE_INSENSITIVE)),
+        USE(Pattern.compile("USE (.+)", Pattern.CASE_INSENSITIVE)),
+        DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)", Pattern.CASE_INSENSITIVE)),
+        SELECT(Pattern.compile("SELECT \\* FROM (.+)", Pattern.CASE_INSENSITIVE)),
+        ALTER(Pattern.compile("ALTER TABLE (.+) ADD (.+)", Pattern.CASE_INSENSITIVE)),
+        INSERT(Pattern.compile("INSERT INTO (.+) values\\((.+)\\)", Pattern.CASE_INSENSITIVE));
 
         public final Pattern pattern;
         SQLCommandTokenizer(Pattern pattern){this.pattern = pattern;}
@@ -62,9 +64,11 @@ public class SQLScriptParser {
     }
 
     private void parseCommand(String s) throws Exception {
+
         for (SQLCommandTokenizer tokenizer : SQLCommandTokenizer.values()){
             Matcher matcher = tokenizer.pattern.matcher(s);
             if (!matcher.matches()) continue;
+            System.out.println("Matcher: " + tokenizer);
 
 
             switch (tokenizer){
@@ -75,9 +79,9 @@ public class SQLScriptParser {
 
                 case DROP -> {
                     if (matcher.group(1).equalsIgnoreCase("database"))
-                        commands.add(new DatabaseDropCmd(matcher.group(3)));
+                        commands.add(new DatabaseDropCmd(matcher.group(2)));
                     else if (matcher.group(1).equalsIgnoreCase("table"))
-                        commands.add(new TableDropCmd(matcher.group(3)));
+                        commands.add(new TableDropCmd(matcher.group(2)));
                 }
 
                 case ALTER -> {
@@ -89,15 +93,19 @@ public class SQLScriptParser {
                 case CREATE -> {
                     if (matcher.group(1).equalsIgnoreCase("database"))
                         commands.add(new DatabaseCreateCmd(matcher.group(2)));
-                    else if (matcher.group().equalsIgnoreCase("table")){
+                    else if (matcher.group(1).equalsIgnoreCase("table")){
                         String tableName = matcher.group(2);
-                        List<String> parameters = Arrays.asList(matcher.group(3).split(","));
+                        List<String> parameters = Arrays.asList(matcher.group(4).split(","));
                         commands.add(new TableCreateCmd(tableName, parameters));
                     }
                 }
 
                 case SELECT -> {
                     commands.add(new SelectCmd(matcher.group(1)));
+                }
+
+                case INSERT -> {
+                    commands.add(new InsertCmd(matcher.group(1), Arrays.asList(matcher.group(2).split(","))));
                 }
             }
         }

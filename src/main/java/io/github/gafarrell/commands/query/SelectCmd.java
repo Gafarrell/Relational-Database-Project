@@ -17,9 +17,8 @@ public class SelectCmd extends SQLCommand {
             System.out.println("!Failed: No database currently being used.");
             return false;
         }
-        if (tableName.equalsIgnoreCase("*")){
-            System.out.println(DatabaseConnector.getInstance().getCurrent().selectAll(tableName));
-        }
+
+        System.out.println(DatabaseConnector.getInstance().getCurrent().selectAll(tableName));
         return false;
     }
 

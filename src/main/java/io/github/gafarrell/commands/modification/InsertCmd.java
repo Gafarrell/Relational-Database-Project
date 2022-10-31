@@ -1,22 +1,27 @@
 package io.github.gafarrell.commands.modification;
 
 import io.github.gafarrell.commands.SQLCommand;
+import io.github.gafarrell.database.DatabaseConnector;
+import io.github.gafarrell.database.Table;
 
+import java.io.Console;
 import java.util.List;
 
 public class InsertCmd extends SQLCommand {
 
     private String tableName;
 
-    public InsertCmd(List<String> params) {
-        this.parameters = params.subList(1,params.size());
-        tableName = params.get(0);
+    public InsertCmd(String tableName, List<String> values) {
+        this.tableName = tableName;
+        this.parameters = values;
+        System.out.println("Created insert cmd.");
     }
 
     @Override
     public boolean execute() throws Exception {
-
-        return false;
+        System.out.println("Executing insert cmd.");
+        DatabaseConnector.getInstance().getCurrent().insertInto(tableName, parameters);
+        return true;
     }
 
     @Override
