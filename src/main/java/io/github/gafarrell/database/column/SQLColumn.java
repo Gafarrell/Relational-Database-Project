@@ -1,9 +1,5 @@
 package io.github.gafarrell.database.column;
 
-import java.io.BufferedWriter;
-import java.util.ArrayList;
-import java.util.List;
-
 public abstract class SQLColumn {
 
     protected SQLColumn nextColumn = null, prevColumn = null;
@@ -25,5 +21,7 @@ public abstract class SQLColumn {
     }
     public abstract int getColumnSize();
     public abstract String getDataAtRow(int row);
-    public abstract void addData(String data) throws Exception;
+    public abstract boolean queueData(String data);
+    public abstract void clearQueue();
+    public abstract void insertQueue();
 }

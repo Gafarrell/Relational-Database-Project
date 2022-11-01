@@ -5,6 +5,7 @@ import java.util.List;
 
 public class FloatColumn extends SQLColumn{
     private List<Float> data;
+    private List<Float> queuedData = new ArrayList<>();
 
     public FloatColumn(String title) {
         super(title);
@@ -22,7 +23,23 @@ public class FloatColumn extends SQLColumn{
     }
 
     @Override
-    public void addData(String data) {
+    public boolean queueData(String data) {
+        try{
+            float queued = Float.parseFloat(data);
+            return queuedData.add(queued);
+        }
+        catch (Exception ignore){}
+        return false;
+    }
 
+    @Override
+    public void clearQueue() {
+        queuedData.clear();
+    }
+
+    @Override
+    public void insertQueue() {
+        data.addAll(queuedData);
+        queuedData.clear();
     }
 }

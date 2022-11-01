@@ -7,6 +7,7 @@ import java.util.List;
 
 public class DatetimeColumn extends SQLColumn {
     private List<Date> data;
+    private List<Date> queuedData;
 
     public DatetimeColumn(String title) {
         super(title);
@@ -24,7 +25,24 @@ public class DatetimeColumn extends SQLColumn {
     }
 
     @Override
-    public void addData(String data) {
+    public boolean queueData(String data) {
+        try{
+            SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
+            Date date = formatter.parse(data);
+            return queuedData.add(date);
+        }
+        catch (Exception ignore){}
+        return false;
+    }
 
+    @Override
+    public void clearQueue() {
+        queuedData.clear();
+    }
+
+    @Override
+    public void insertQueue() {
+        data.addAll(queuedData);
+        queuedData.clear();
     }
 }

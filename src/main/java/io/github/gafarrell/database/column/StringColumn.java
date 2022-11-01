@@ -5,6 +5,7 @@ import java.util.List;
 
 public class StringColumn extends SQLColumn {
     private List<String> data;
+    private List<String> queuedData = new ArrayList<>();
     private int size;
     private boolean var;
 
@@ -26,9 +27,19 @@ public class StringColumn extends SQLColumn {
     }
 
     @Override
-    public void addData(String data) throws Exception {
-        if (var && data.length() > size) throw new Exception("Data " + data + " invalid for column " + title);
-        this.data.add(data);
+    public boolean queueData(String data) {
+        if (var && data.length() > size) return false;
+        return queuedData.add(data);
     }
 
+    @Override
+    public void clearQueue() {
+        queuedData.clear();
+    }
+
+    @Override
+    public void insertQueue() {
+        data.addAll(queuedData);
+        queuedData.clear();
+    }
 }

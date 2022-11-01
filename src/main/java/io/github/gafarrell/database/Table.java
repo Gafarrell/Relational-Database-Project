@@ -34,7 +34,7 @@ public class Table {
             return;
         }
 
-        BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(file, true));
 
         for (SQLColumn column : columns){
             writer.write(column.getTitle() + ",");
@@ -49,7 +49,7 @@ public class Table {
      * @param parentDatabase Database this file will belong to.
      * @throws IOException Exception iof the file is unable to be read/opened.
      */
-    Table(File f, Database parentDatabase) throws IOException {
+    Table(File f, Database parentDatabase) throws Exception {
         this.parentDatabase = parentDatabase;
         name = f.getName().substring(0, f.getName().length()-4);
 
@@ -74,6 +74,11 @@ public class Table {
             }
         }
 
+        while ((line = reader.readLine()) != null){
+            List<String> data = Arrays.asList(line.split(","));
+            addData(data);
+        }
+
         reader.close();
 
         for (int i = 0; i < this.columns.size()-1; i++){
@@ -83,17 +88,48 @@ public class Table {
 
     public int columnCount(){ return columns.size(); }
 
+    private void addData(List<String> values) throws Exception {
+        if (values.size() != columns.size()) throw new Exception("Not enough arguments!");
+        for (int i = 0; i < values.size(); i++){
+            if (!columns.get(i).queueData(values.get(i))){
+                dequeueDataFromColumns();
+                throw new Exception("Argument mismatch!");
+            }
+        }
+        insertQueuedData();
+    }
+
     /**
      * Insert data values into the table.
      * @param values String values of the data to be inserted into the table.
      * @throws Exception If the data is unable to be parsed.
      */
     public void insertInto(List<String> values) throws Exception {
-        if (values.size() <= 0) throw new Exception("Values cannot be empty!");
-        if (values.size() != columns.size()) throw new Exception("Table size does not match given number of arguments!");
-        System.out.println("Inserting values to the columns.");
-        SQLColumn firstColumn = columns.get(0);
-        firstColumn.insert(values);
+        addData(values);
+
+        File file = new File(parentDatabase.getDbDirectory() + name + ".csv");
+        BufferedWriter writer = new BufferedWriter(new FileWriter(file, true));
+
+        for (String s : values){
+            writer.write(s);
+            writer.write(",");
+        }
+
+        writer.write("\n");
+
+        writer.close();
+    }
+
+    private void dequeueDataFromColumns(){
+        for (SQLColumn column : columns){
+            column.clearQueue();
+        }
+    }
+
+    private void insertQueuedData(){
+        for (SQLColumn column : columns){
+            column.insertQueue();
+        }
     }
 
     /**
@@ -213,9 +249,9 @@ public class Table {
 
         if (columns.size() > 0) {
             for (int i = 0; i < columns.get(0).getColumnSize(); i++){
+                infoString.append("\n");
                 for (SQLColumn column : columns)
-                    infoString.append("\n")
-                                .append(column.getDataAtRow(i))
+                    infoString.append(column.getDataAtRow(i))
                                 .append(" | ");
             }
         }
