@@ -5,13 +5,14 @@ import java.util.List;
 
 public class StringColumn extends SQLColumn {
     private List<String> data;
-    private List<String> queuedData = new ArrayList<>();
+    private List<String> dataQueue;
     private int size;
     private boolean var;
 
     public StringColumn(String title, int size) {
         super(title);
         this.data = new ArrayList<>();
+        this.dataQueue = new ArrayList<>();
         var = title.toLowerCase().contains("varchar");
         this.size = size;
     }
@@ -28,18 +29,16 @@ public class StringColumn extends SQLColumn {
 
     @Override
     public boolean queueData(String data) {
-        if (var && data.length() > size) return false;
-        return queuedData.add(data);
+        return dataQueue.add(data);
     }
 
     @Override
     public void clearQueue() {
-        queuedData.clear();
+        dataQueue.clear();
     }
 
     @Override
     public void insertQueue() {
-        data.addAll(queuedData);
-        queuedData.clear();
+        data.addAll(dataQueue);
     }
 }

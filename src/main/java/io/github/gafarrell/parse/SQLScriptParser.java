@@ -27,7 +27,7 @@ public class SQLScriptParser {
         CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+?)( \\((.+)\\)|$)", Pattern.CASE_INSENSITIVE)),
         USE(Pattern.compile("USE (.+)", Pattern.CASE_INSENSITIVE)),
         DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)", Pattern.CASE_INSENSITIVE)),
-        SELECT(Pattern.compile("SELECT \\* FROM (.+)", Pattern.CASE_INSENSITIVE)),
+        SELECT(Pattern.compile("SELECT(.+) FROM (.+?)(where|$)(.+)?", Pattern.CASE_INSENSITIVE)),
         ALTER(Pattern.compile("ALTER TABLE (.+) ADD (.+)", Pattern.CASE_INSENSITIVE)),
         INSERT(Pattern.compile("INSERT INTO (.+) values\\((.+)\\)", Pattern.CASE_INSENSITIVE));
 

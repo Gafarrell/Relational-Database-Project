@@ -20,7 +20,7 @@ public class Main {
         System.out.println("\tInitialized and ready!");
         System.out.println("==================================");
 
-        System.out.println("~ Type an SQL query or enter a file path to run a .SQL script file.\n");
+        System.out.println("~ Type an SQL query or enter a file path to run a .SQL script file.");
 
         if (args.length > 0){
             try {
@@ -43,9 +43,13 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
         String query = "";
         System.out.print("# ");
-        while (!(query = scanner.nextLine()).equalsIgnoreCase(".exit")){
+        while (!(query += scanner.nextLine()).equalsIgnoreCase(".exit")){
+            query = query.replaceAll("\n", " ");
             try {
-                if (query.toLowerCase().contains(".sql")){
+                if (query.toLowerCase().equalsIgnoreCase("/debug")) {
+                    Debug.toggleDebug();
+                }
+                else if (query.toLowerCase().contains(".sql")){
                     System.out.println("File detected.");
                     File file = new File(query);
                     if (!file.exists()) {
@@ -60,6 +64,7 @@ public class Main {
                 else {
                     int semiIndex;
                     if ((semiIndex = query.indexOf(';')) == -1) continue;
+
                     query = query.substring(0, semiIndex);
                     SQLScriptParser toParse = new SQLScriptParser(query);
                     toParse.execute();

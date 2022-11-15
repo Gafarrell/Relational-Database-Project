@@ -1,5 +1,7 @@
 package io.github.gafarrell.database.column;
 
+import io.github.gafarrell.Debug;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class IntColumn extends SQLColumn{
 
     @Override
     public boolean queueData(String data) {
+        Debug.writeLine(data);
         try{
             int queued = Integer.parseInt(data);
             return queuedData.add(queued);
