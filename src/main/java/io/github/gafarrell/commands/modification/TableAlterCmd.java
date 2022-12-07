@@ -26,7 +26,7 @@ public class TableAlterCmd extends SQLCommand {
         }
 
         switch (parameters.get(0).toLowerCase()){
-            case "drop":
+            case "dropDatabase":
                 DatabaseConnector.getInstance().getCurrent().alterTableDrop(tableToEdit, parameters.subList(1, parameters.size()));
                 break;
 

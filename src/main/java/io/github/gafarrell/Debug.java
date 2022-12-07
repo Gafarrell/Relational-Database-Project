@@ -22,4 +22,22 @@ public class Debug {
         if (debugActive)
             System.out.println(o);
     }
+
+    public static void writeArray(Object[] arr){
+        if (!debugActive) return;
+        for (Object o : arr)
+            System.out.println(o);
+    }
+
+    public static void writeArray(float[] arr){
+        if (!debugActive) return;
+        for (float o : arr)
+            System.out.println(o);
+    }
+
+    public static void writeArray(int[] arr){
+        if (!debugActive) return;
+        for (int o : arr)
+            System.out.println(o);
+    }
 }

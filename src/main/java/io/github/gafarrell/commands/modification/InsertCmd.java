@@ -14,12 +14,10 @@ public class InsertCmd extends SQLCommand {
     public InsertCmd(String tableName, List<String> values) {
         this.tableName = tableName;
         this.parameters = values;
-        System.out.println("Created insert cmd.");
     }
 
     @Override
     public boolean execute() throws Exception {
-        System.out.println("Executing insert cmd.");
         DatabaseConnector.getInstance().getCurrent().insertInto(tableName, parameters);
         return true;
     }

@@ -16,17 +16,11 @@ public class DatabaseDropCmd extends SQLCommand {
     @Override
     public boolean execute() throws Exception {
         if (DatabaseConnector.getInstance().dropDatabase(dbName)){
-            System.out.println("Successfull dropped database " + dbName + ".");
+            commandMessage = GREEN + "Successfull dropped database " + dbName + ".";
             return true;
         }
-        else
-            System.out.println("Failed! Database " + dbName + " was unable to be dropped.");
 
+        commandMessage = RED + "! Database " + dbName + " was unable to be dropped.";
         return false;
-    }
-
-    @Override
-    public String getCommandString() {
-        return null;
     }
 }

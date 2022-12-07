@@ -1,22 +1,24 @@
 package io.github.gafarrell.parse;
 
+import io.github.gafarrell.Debug;
 import io.github.gafarrell.commands.CloseProgramCmd;
 import io.github.gafarrell.commands.SQLCommand;
 import io.github.gafarrell.commands.creation.DatabaseCreateCmd;
 import io.github.gafarrell.commands.creation.DatabaseDropCmd;
 import io.github.gafarrell.commands.creation.TableCreateCmd;
 import io.github.gafarrell.commands.creation.TableDropCmd;
+import io.github.gafarrell.commands.modification.DeleteCmd;
 import io.github.gafarrell.commands.modification.InsertCmd;
 import io.github.gafarrell.commands.modification.TableAlterCmd;
+import io.github.gafarrell.commands.modification.UpdateCmd;
+import io.github.gafarrell.commands.query.JoinedSelect;
 import io.github.gafarrell.commands.query.SelectCmd;
 import io.github.gafarrell.commands.query.UseCmd;
-import io.github.gafarrell.database.DatabaseConnector;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,17 +26,18 @@ public class SQLScriptParser {
 
     private enum SQLCommandTokenizer{
 
-        CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+?)( \\((.+)\\)|$)", Pattern.CASE_INSENSITIVE)),
+        CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+?)(\\((.+)\\)|$)", Pattern.CASE_INSENSITIVE)),
         USE(Pattern.compile("USE (.+)", Pattern.CASE_INSENSITIVE)),
+        DELETE(Pattern.compile("DELETE FROM (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
         DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)", Pattern.CASE_INSENSITIVE)),
-        SELECT(Pattern.compile("SELECT(.+) FROM (.+?)(where|$)(.+)?", Pattern.CASE_INSENSITIVE)),
+        SELECT(Pattern.compile("SELECT (.+) FROM (.+?) (WHERE|$|ON)(.+)?", Pattern.CASE_INSENSITIVE)),
         ALTER(Pattern.compile("ALTER TABLE (.+) ADD (.+)", Pattern.CASE_INSENSITIVE)),
+        UPDATE(Pattern.compile("UPDATE (.+) SET (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
         INSERT(Pattern.compile("INSERT INTO (.+) values\\((.+)\\)", Pattern.CASE_INSENSITIVE));
 
         public final Pattern pattern;
         SQLCommandTokenizer(Pattern pattern){this.pattern = pattern;}
     }
-
     private final ArrayList<SQLCommand> commands = new ArrayList<>();
 
     public SQLScriptParser(File file) throws Exception {
@@ -68,9 +71,8 @@ public class SQLScriptParser {
         for (SQLCommandTokenizer tokenizer : SQLCommandTokenizer.values()){
             Matcher matcher = tokenizer.pattern.matcher(s);
             if (!matcher.matches()) continue;
-            System.out.println("Matcher: " + tokenizer);
 
-
+            Debug.writeLine(tokenizer);
             switch (tokenizer){
                 case USE -> {
                     String dbName = matcher.group(1);
@@ -100,8 +102,23 @@ public class SQLScriptParser {
                     }
                 }
 
+                case UPDATE -> {
+                    commands.add(new UpdateCmd(matcher.group(1), matcher.group(2), matcher.group(3)));
+                }
+
+                case DELETE ->{
+                    commands.add(new DeleteCmd(matcher.group(1), matcher.group(2)));
+                }
+
                 case SELECT -> {
-                    commands.add(new SelectCmd(matcher.group(1)));
+                    if (matcher.groupCount() == 4 && (matcher.group(3).equalsIgnoreCase("on") || matcher.group(2).split(",").length > 1)){
+                        Debug.writeLine("Creating jointed select.");
+                        commands.add(new JoinedSelect(matcher.group(1), matcher.group(2), matcher.group(4)));
+                    }
+                    else {
+                        Debug.writeLine("Creating regular select.");
+                        commands.add(new SelectCmd(matcher.group(2), matcher.group(1), matcher.groupCount() == 4 ? matcher.group(4) : ""));
+                    }
                 }
 
                 case INSERT -> {
@@ -111,12 +128,11 @@ public class SQLScriptParser {
         }
     }
 
-    public void execute() throws Exception {
-        for (SQLCommand command : commands){
+    public void executeAllCommands() throws Exception {
+        for (SQLCommand command : commands) {
             try {
                 command.execute();
-            }
-            catch (Exception e){
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
         }

@@ -16,20 +16,23 @@ public class TableDropCmd extends SQLCommand {
     @Override
     public boolean execute() throws Exception {
 
-        if (DatabaseConnector.getInstance().notUsingDB()){
-            System.out.println("!Failed: No database currently being used.");
-            return false;
-        }
+        try {
+            if (DatabaseConnector.getInstance().notUsingDB()) {
+                commandMessage = RED + "! No database currently being used.";
+                return successful = false;
+            }
 
-        if (DatabaseConnector.getInstance().getCurrent().dropTable(dbName)){
-            System.out.println("Table " + dbName + " deleted.");
-            return true;
-        }
-        return false;
-    }
+            if (DatabaseConnector.getInstance().getCurrent().dropTable(dbName)) {
+                commandMessage = GREEN + "Table " + dbName + " deleted.";
+                return successful = true;
+            }
 
-    @Override
-    public String getCommandString() {
-        return "DROP TABLE " + parameters.get(0);
+            commandMessage = RED + "! Unable to drop database " + dbName;
+            return successful = false;
+        }
+        catch (Exception e){
+            commandMessage = e.getMessage();
+            return successful = false;
+        }
     }
 }

@@ -33,7 +33,7 @@ public class Main {
                     }
                     SQLScriptParser parser = new SQLScriptParser(file);
                     System.out.println("Executing...");
-                    parser.execute();
+                    parser.executeAllCommands();
                 }
             } catch (Exception e) {
                 System.out.println(e.getMessage());
@@ -58,7 +58,7 @@ public class Main {
                     }
                     SQLScriptParser parser = new SQLScriptParser(file);
                     System.out.println("Executing...");
-                    parser.execute();
+                    parser.executeAllCommands();
                     continue;
                 }
                 else {
@@ -67,14 +67,14 @@ public class Main {
 
                     query = query.substring(0, semiIndex);
                     SQLScriptParser toParse = new SQLScriptParser(query);
-                    toParse.execute();
+                    toParse.executeAllCommands();
                 }
             } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
 
+            query = "";
             System.out.print("# ");
         }
-
     }
 }

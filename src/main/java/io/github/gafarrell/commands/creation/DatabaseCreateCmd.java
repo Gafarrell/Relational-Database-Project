@@ -16,17 +16,11 @@ public class DatabaseCreateCmd extends SQLCommand {
     @Override
     public boolean execute() throws Exception {
         if (DatabaseConnector.getInstance().createDatabase(dbName)){
-            System.out.println("Database " + dbName + " created.");
-            return true;
+            commandMessage = "Database " + dbName + " created.";
+            return successful = true;
         }
-        else
-            System.out.println("!Failed to create database " + dbName + " because it already exists.");
 
-        return false;
-    }
-
-    @Override
-    public String getCommandString() {
-        return "CREATE DATABASE " + dbName;
+        commandMessage = "!Failed to create database " + dbName + " because it already exists.";
+        return successful = false;
     }
 }

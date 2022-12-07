@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 public class DatabaseConnector {
     private static DatabaseConnector instance;
     private static HashMap<String, Database> activeDatabases = new HashMap<>();
-    private Database current;
+    private static Database current;
 
     // Initializes the database connector singleton.
     public static void Initialize() throws Exception {
@@ -93,7 +93,7 @@ public class DatabaseConnector {
     // Drops a specified DB.
     public boolean dropDatabase(String name) throws Exception {
         if (activeDatabases.containsKey(name)){
-            activeDatabases.get(name).drop();
+            activeDatabases.get(name).dropDatabase();
             return activeDatabases.remove(name) != null;
         }
         else return false;

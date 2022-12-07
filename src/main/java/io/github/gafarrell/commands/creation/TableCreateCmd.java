@@ -12,9 +12,8 @@ import java.util.List;
 
 public class TableCreateCmd extends SQLCommand {
 
-    private String tableName;
-    private List<String> args;
-
+    private final String tableName;
+    private final List<String> args;
 
     public TableCreateCmd(String tableName , List<String> args)
     {
@@ -24,8 +23,8 @@ public class TableCreateCmd extends SQLCommand {
 
     public boolean execute() throws Exception {
         if (DatabaseConnector.getInstance().notUsingDB()){
-            System.out.println("!Failed: No database currently being used.");
-            return false;
+            commandMessage = "!Failed: No database currently being used.";
+            return successful = false;
         }
 
         ArrayList<SQLColumn> columns = new ArrayList<>();
@@ -45,26 +44,16 @@ public class TableCreateCmd extends SQLCommand {
                     columns.add(new StringColumn(s, Integer.parseInt(columnData[2])));
                     break;
                 default:
-                    return false;
+                    return successful = false;
             }
         }
 
         if (DatabaseConnector.getInstance().getCurrent().addTable(tableName, columns)){
-            System.out.println("Table " + tableName + " created.");
-            return true;
+            commandMessage = "Table " + tableName + " created.";
+            return successful = true;
         }
-        throw new Exception("!Failed to create table " + tableName + " because it already exists.");
-    }
 
-    @Override
-    public String getCommandString() {
-        StringBuilder cmdStringBuilder = new StringBuilder();
-        cmdStringBuilder.append("CREATE TABLE ").append(tableName).append(' ');
-        for (String s : args){
-            cmdStringBuilder.append(s).append(" ");
-        }
-        return cmdStringBuilder.toString();
+        commandMessage = "!Failed to create table " + tableName + " because it already exists.";
+        return successful = false;
     }
-
-    public String getTableName(){return tableName;}
 }
