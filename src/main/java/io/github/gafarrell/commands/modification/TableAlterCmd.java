@@ -1,17 +1,22 @@
 package io.github.gafarrell.commands.modification;
 
 import io.github.gafarrell.commands.SQLCommand;
+import io.github.gafarrell.database.Database;
 import io.github.gafarrell.database.DatabaseConnector;
+import io.github.gafarrell.database.Table;
 import io.github.gafarrell.database.column.FloatColumn;
 import io.github.gafarrell.database.column.IntColumn;
 import io.github.gafarrell.database.column.SQLColumn;
 import io.github.gafarrell.database.column.StringColumn;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class TableAlterCmd extends SQLCommand {
-    private String tableToEdit;
+    private final String tableToEdit;
+    private final List<String> parameters;
 
     public TableAlterCmd(String tableName, List<String> alterParams) throws Exception {
         this.tableToEdit = tableName;
@@ -21,54 +26,88 @@ public class TableAlterCmd extends SQLCommand {
     @Override
     public boolean execute() throws Exception {
         if (DatabaseConnector.getInstance().notUsingDB()){
-            System.out.println("!Failed: No database currently being used.");
+            commandMessage = "!Failed: No database currently being used.";
             return false;
         }
 
-        switch (parameters.get(0).toLowerCase()){
-            case "dropDatabase":
-                DatabaseConnector.getInstance().getCurrent().alterTableDrop(tableToEdit, parameters.subList(1, parameters.size()));
-                break;
+        Database current = DatabaseConnector.getInstance().getCurrent();
 
-            case "add":
-                ArrayList<SQLColumn> columns = new ArrayList<>();
-                for (String param : parameters.subList(1, parameters.size())){
-                    String[] columnData = param.toLowerCase().trim().split(" ");
-
-                    switch (columnData[1].toLowerCase()){
-                        case "float":
-                            columns.add(new FloatColumn(param));
-                            break;
-                        case "int":
-                            columns.add(new IntColumn(param));
-                            break;
-                        case "char":
-                        case "varchar":
-                            columns.add(new StringColumn(param, Integer.parseInt(columnData[2])));
-                            break;
-                        default:
-                            return false;
-
-                    }
-
-                    if (DatabaseConnector.getInstance().getCurrent().alterTableAdd(tableToEdit, columns)){
-                        System.out.println("Table " + tableToEdit + " modified.");
-                    }
-                    break;
-                }
+        if (!current.containsTable(tableToEdit)) {
+            commandMessage = RED + "! Table " + tableToEdit + " does not exist.";
+            return false;
         }
-
-
-        return false;
+        switch (parameters.get(0).toLowerCase()){
+            case "drop" -> {
+                return executeDrop(current);
+            }
+            case "add" -> {
+                return executeAdd(current);
+            }
+            default ->{
+                commandMessage = RED + "! Not a valid alter command";
+                return false;
+            }
+        }
     }
 
-    @Override
-    public String getCommandString() {
-        StringBuilder cmdCommandString = new StringBuilder();
-        cmdCommandString.append("ALTER TABLE ").append(tableToEdit).append(' ');
-        for (String s : parameters){
-            cmdCommandString.append(s).append(' ');
+
+    private boolean executeAdd(Database current){
+        Table table = current.getTable(tableToEdit);
+        List<SQLColumn> currentColumns = table.getColumns();
+        String[] newColumns = parameters.get(1).split(",");
+
+        for (String newColumn : newColumns){
+            String title = newColumn.split(" ")[0];
+            String type = newColumn.split(" ")[1];
+
+            SQLColumn column;
+
+            if (type.contains("varchar(")) {
+                int size = Integer.parseInt(type.substring(8, type.length()-1));
+                column = new StringColumn(title, size);
+            }
+            else {
+                switch (type) {
+                    case "int" -> {
+                        column = new IntColumn(title);
+                    }
+                    case "float" -> {
+                        column = new FloatColumn(title);
+                    }
+                    default -> {
+                        commandMessage = "! Invalid column type: " + type;
+                        return false;
+                    }
+                }
+            }
+
+            currentColumns.add(column);
         }
-        return cmdCommandString.toString();
+        return true;
+    }
+
+    private boolean executeDrop(Database current){
+        Table table = current.getTable(tableToEdit);
+        List<SQLColumn> columns = table.getColumns();
+        String[] targetColumns = parameters.get(1).split(",");
+
+        for (String title : targetColumns){
+            Iterator<SQLColumn> sqlColumnIterator = columns.iterator();
+
+            while (sqlColumnIterator.hasNext()){
+                SQLColumn col = sqlColumnIterator.next();
+
+                if (col.getTitle().equals(title)){
+                    columns.remove(col);
+                    continue;
+                }
+                commandMessage = RED + "! Table " + tableToEdit + " does not contain column " + title;
+                return false;
+            }
+        }
+
+        table.setColumns(columns);
+        commandMessage = GREEN + "Removed " + targetColumns.length + " column(s).";
+        return true;
     }
 }

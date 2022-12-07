@@ -31,9 +31,11 @@ public class SQLScriptParser {
         DELETE(Pattern.compile("DELETE FROM (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
         DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)", Pattern.CASE_INSENSITIVE)),
         SELECT(Pattern.compile("SELECT (.+) FROM (.+?) (WHERE|$|ON)(.+)?", Pattern.CASE_INSENSITIVE)),
-        ALTER(Pattern.compile("ALTER TABLE (.+) ADD (.+)", Pattern.CASE_INSENSITIVE)),
+        ALTER(Pattern.compile("ALTER TABLE (.+) (ADD|DROP) (.+)", Pattern.CASE_INSENSITIVE)),
         UPDATE(Pattern.compile("UPDATE (.+) SET (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
-        INSERT(Pattern.compile("INSERT INTO (.+) values\\((.+)\\)", Pattern.CASE_INSENSITIVE));
+        INSERT(Pattern.compile("INSERT INTO (.+) values\\((.+)\\)", Pattern.CASE_INSENSITIVE)),
+        BEGIN_TRANSACTION(Pattern.compile("BEGIN TRANSACTION", Pattern.CASE_INSENSITIVE)),
+        COMMIT(Pattern.compile("COMMIT", Pattern.CASE_INSENSITIVE));
 
         public final Pattern pattern;
         SQLCommandTokenizer(Pattern pattern){this.pattern = pattern;}
@@ -88,7 +90,9 @@ public class SQLScriptParser {
 
                 case ALTER -> {
                     String dbName = matcher.group(1);
-                    List<String> alterParameters = Arrays.asList(matcher.group(2).split(","));
+                    List<String> alterParameters = new ArrayList<>();
+                    alterParameters.add(matcher.group(2));
+                    alterParameters.add(matcher.group(3));
                     commands.add(new TableAlterCmd(dbName, alterParameters));
                 }
 

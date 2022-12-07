@@ -13,10 +13,12 @@ public class DatabaseConnector {
     private static Database current;
 
     // Initializes the database connector singleton.
-    public static void Initialize() throws Exception {
+    public static boolean Initialize() throws Exception {
         if (instance == null){
             instance = new DatabaseConnector();
+            return true;
         }
+        return false;
     }
 
     // Gets an instance of the database connector.

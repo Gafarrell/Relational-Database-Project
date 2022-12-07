@@ -7,9 +7,4 @@ public class CloseProgramCmd extends SQLCommand{
         System.exit(0);
         return true;
     }
-
-    @Override
-    public String getCommandString() {
-        return ".EXIT";
-    }
 }

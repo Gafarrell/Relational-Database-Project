@@ -6,6 +6,7 @@ import io.github.gafarrell.database.DatabaseConnector;
 import io.github.gafarrell.database.Table;
 import io.github.gafarrell.database.column.SQLColumn;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -42,16 +43,38 @@ public class DeleteCmd extends SQLCommand  {
         }
 
         List<Object> data = column.getData();
+        int dataRemoved = 0;
 
-        switch (column.getType()){
-            case STRING -> {
-
+        for (int i = 0; i < data.size(); i++){
+            switch (column.getType()){
+                case INT -> {
+                    int w = Integer.parseInt(whereTokens[2]);
+                    if (compare(data.get(i), w, whereTokens[1])) {
+                        column.deleteDataAt(i);
+                        dataRemoved++;
+                    }
+                }
+                case FLOAT -> {
+                    float w = Float.parseFloat(whereTokens[2]);
+                    if (compare(data.get(i), w, whereTokens[1])){
+                        column.deleteDataAt(i);
+                        dataRemoved++;
+                    }
+                }
+                case STRING -> {
+                    if (compare(data.get(i), whereTokens[2], whereTokens[1])){
+                        column.deleteDataAt(i);
+                        dataRemoved++;
+                    }
+                }
+                default -> {
+                    commandMessage = RED + "! Invalid SQL Column type detected.";
+                    return false;
+                }
             }
-            case FLOAT -> {}
-            case INT -> {}
-            default -> {}
         }
 
-        return false;
+        commandMessage = GREEN + "Successfully removed " + dataRemoved + " entries";
+        return true;
     }
 }

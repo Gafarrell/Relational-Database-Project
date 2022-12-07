@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 public class Table {
     private String name;
     private Database parentDatabase;
-    private ArrayList<SQLColumn> columns = new ArrayList<>();
+    private List<SQLColumn> columns = new ArrayList<>();
 
     /**
      * Constructs a table.
@@ -159,6 +159,19 @@ public class Table {
         return null;
     }
 
+    public boolean removeColumn(String title){
+        Iterator<SQLColumn> columnIterator = columns.iterator();
+
+        while (columnIterator.hasNext()){
+            SQLColumn col = columnIterator.next();
+            if (col.getTitle().equals(title)) {
+                columns.remove(col);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean hasColumn(String title){
         for (SQLColumn c : columns)
             if (c.getTitle().equalsIgnoreCase(title))
@@ -200,6 +213,17 @@ public class Table {
 
         writer.close();
     }
+
+    public List<SQLColumn> getColumns(){return columns;}
+    public void setColumns(List<SQLColumn> columns){this.columns = columns;}
+
+    public boolean containsColumn(String title){
+        for (SQLColumn c : columns)
+            if (c.getTitle().equals(title))
+                return true;
+        return false;
+    }
+
 
     private void dequeueDataFromColumns(){
         for (SQLColumn column : columns){

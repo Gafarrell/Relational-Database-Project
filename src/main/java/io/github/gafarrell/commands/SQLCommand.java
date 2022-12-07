@@ -66,29 +66,6 @@ public abstract class SQLCommand {
             }
         }
 
-        else if (obj1 instanceof Integer casted1 && obj2 instanceof Integer casted2){
-            switch (operator) {
-                case "=" -> {
-                    if (casted1.equals(casted2)) return true;
-                }
-                case "<=" -> {
-                    if (casted1 <= casted2) return true;
-                }
-                case ">=" -> {
-                    if (casted1 >= casted2) return true;
-                }
-                case "<" -> {
-                    if (casted1 < casted2) return true;
-                }
-                case ">" -> {
-                    if (casted1 > casted2) return true;
-                }
-                default -> {
-                    return false;
-                }
-            }
-        }
-
         return false;
     }
 }
