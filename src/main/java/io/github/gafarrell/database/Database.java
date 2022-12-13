@@ -4,6 +4,7 @@ import io.github.gafarrell.Debug;
 import io.github.gafarrell.database.column.SQLColumn;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -78,57 +79,6 @@ public class Database {
     }
 
     /**
-     * Drops columns from table with the given name.
-     * @param table Name of the table.
-     * @param columns List of column names to dropDatabase from table.
-     * @throws Exception If table is unable to alter file.
-     */
-    public void alterTableDrop(String table, List<String> columns) throws Exception{
-        if (tables.containsKey(table)){
-            tables.get(table).alterTableDrop(columns);
-            System.out.println("Table " + table + " modified.");
-            return;
-        }
-        System.out.println("Unable to modify table " + table + " because it does not exist.");
-    }
-
-    /**
-     * Add data columns to a table.
-     * @param name Name of the table.
-     * @param newColumns Columns to add to the table.
-     * @return Returns true of table was successfully created, false otherwise.
-     * @throws Exception If table was unable to create file information.
-     */
-    public boolean alterTableAdd(String name, ArrayList<SQLColumn> newColumns) throws Exception {
-        if (tables.containsKey(name)){
-            tables.get(name).alterTableAdd(newColumns);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Inserts data values to a given table.
-     * @param tableName Name of the table.
-     * @param values String formatted data of the data to be added to the table.
-     * @throws Exception If the data is unable to be parsed or in the incorrect order.
-     */
-    public void insertInto(String tableName, List<String> values) throws Exception {
-        if (tables.containsKey(tableName)){
-            System.out.println("Table exists, adding values.");
-            tables.get(tableName).insertInto(values);
-        }
-    }
-
-    public boolean update(String table, String set, String where){
-        if (tables.containsKey(table)){
-            Debug.writeLine("Table found...");
-            return tables.get(table).update(set, where);
-        }
-        return false;
-    }
-
-    /**
      * Select data from a table given the specified search parameters.
      * @param from Name of the table.
      * @return Returns the data string of the information gathered.
@@ -138,13 +88,6 @@ public class Database {
             return tables.get(from).select(columns, conditional);
         }
         return "Table " + from + " does not exist.";
-    }
-
-    public boolean delete(String from, String where){
-        if (tables.containsKey(from)){
-            return tables.get(from).deleteFrom(where);
-        }
-        return false;
     }
 
     public String joinedSelect(String join, String columns, String on) throws Exception {
@@ -166,6 +109,12 @@ public class Database {
             return tables.get(from).selectAll(columns);
         }
         else return "!Failed to query table " + from + " because it does not exist.";
+    }
+
+    public void save() throws IOException {
+        for (Table t : tables.values()){
+            t.save();
+        }
     }
 
     /**

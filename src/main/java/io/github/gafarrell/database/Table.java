@@ -13,7 +13,9 @@ import java.util.regex.Pattern;
 
 public class Table {
     private String name;
+    private File tableFile;
     private Database parentDatabase;
+    private boolean locked = false;
     private List<SQLColumn> columns = new ArrayList<>();
 
     /**
@@ -31,14 +33,14 @@ public class Table {
         if (columns.size() > 1)
             for (int i = 0; i < columns.size()-1; i++) columns.get(i).setNextColumn(columns.get(i+1));
 
-        File file = new File(parent.getDbDirectory() + name + ".csv");
-        if (!file.createNewFile()) throw new Exception("!Failed to create " + name + " because it already exists.");
+        tableFile = new File(parent.getDbDirectory() + name + ".csv");
+        if (!tableFile.createNewFile()) throw new Exception("!Failed to create " + name + " because it already exists.");
 
         if (columns.isEmpty()) {
             return;
         }
 
-        BufferedWriter writer = new BufferedWriter(new FileWriter(file, true));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tableFile, true));
 
         for (SQLColumn column : columns){
             writer.write(column.getTitle() + ",");
@@ -159,19 +161,6 @@ public class Table {
         return null;
     }
 
-    public boolean removeColumn(String title){
-        Iterator<SQLColumn> columnIterator = columns.iterator();
-
-        while (columnIterator.hasNext()){
-            SQLColumn col = columnIterator.next();
-            if (col.getTitle().equals(title)) {
-                columns.remove(col);
-                return true;
-            }
-        }
-        return false;
-    }
-
     public boolean hasColumn(String title){
         for (SQLColumn c : columns)
             if (c.getTitle().equalsIgnoreCase(title))
@@ -179,8 +168,6 @@ public class Table {
 
         return false;
     }
-
-    public int columnCount(){ return columns.size(); }
 
     private void addData(List<String> values) throws Exception {
         if (values.size() != columns.size()) throw new Exception("Not enough arguments!");
@@ -193,28 +180,13 @@ public class Table {
         insertQueuedData();
     }
 
-    /**
-     * Insert data values into the table.
-     * @param values String values of the data to be inserted into the table.
-     * @throws Exception If the data is unable to be parsed.
-     */
-    public void insertInto(List<String> values) throws Exception {
-        addData(values);
+    public void lock(){locked = true;}
+    public void unlock(){locked = false;}
 
-        File file = new File(parentDatabase.getDbDirectory() + name + ".csv");
-        BufferedWriter writer = new BufferedWriter(new FileWriter(file, true));
-
-        for (String s : values){
-            writer.write(s);
-            writer.write(",");
-        }
-
-        writer.write("\n");
-
-        writer.close();
-    }
+    public boolean isLocked(){return locked;}
 
     public List<SQLColumn> getColumns(){return columns;}
+
     public void setColumns(List<SQLColumn> columns){this.columns = columns;}
 
     public boolean containsColumn(String title){
@@ -223,7 +195,6 @@ public class Table {
                 return true;
         return false;
     }
-
 
     private void dequeueDataFromColumns(){
         for (SQLColumn column : columns){
@@ -276,27 +247,7 @@ public class Table {
         return infoString.toString();
     }
 
-    public boolean deleteFrom(String where){
-        Debug.writeLine("Deleting using " + where);
-        String[] whereList = where.split(" ");
-        if (whereList.length != 3) return false;
-
-        SQLColumn found = getColumnWithTitle(whereList[0].trim());
-        if (found == null) return false;
-
-        int[] selections = found.select(whereList[1], whereList[2]);
-
-        for (int selection : selections){
-            for (SQLColumn column : columns){
-                column.deleteDataAt(selection);
-            }
-        }
-
-        return false;
-    }
-
-    public String selectAll(String columns)
-    {
+    public String selectAll(String columns) {
         StringBuilder builder = new StringBuilder();
 
         String[] cs = columns.split(",");
@@ -325,36 +276,7 @@ public class Table {
         return builder.toString();
     }
 
-    public boolean update(String set, String where){
-        String[] setOperation = set.split(" ");
-        String[] whereOperation = where.split(" ");
-
-        if (setOperation.length != 3 || whereOperation.length != 3) return false;
-
-        Debug.writeLine("Set and where operations are valid length...");
-
-        SQLColumn setCol = getColumnWithTitle(setOperation[0]);
-        SQLColumn whereCol = getColumnWithTitle(whereOperation[0]);
-
-        if (setCol == null || whereCol == null) return false;
-
-        Debug.writeLine("Selection column and where column have been found...");
-
-        Debug.writeLine("Finding selection values where \"" + whereOperation[0] + "\" = \"" + whereOperation[2] + "\"");
-        int[] selections = whereCol.select(whereOperation[1], whereOperation[2]);
-
-        Debug.writeLine("Setting values at positions: ");
-        Debug.writeArray(selections);
-
-        for (int selection : selections){
-            setCol.setDataAtRow(selection, setOperation[2]);
-        }
-
-        updateFile();
-        return true;
-    }
-
-    public String select(String showColumnString, String conditions){
+    public String select(String showColumnString, String conditions) {
         StringBuilder builder = new StringBuilder();
 
         List<String> showColumnsStringList = Arrays.asList(showColumnString.split(","));
@@ -387,71 +309,10 @@ public class Table {
     }
 
     /**
-     * Add columns to table.
-     * @param newColumns New columns to add.
-     * @return True if table alter was successful, false otherwise.
-     * @throws Exception If table already exists or unable to add column.
-     */
-    public boolean alterTableAdd(ArrayList<SQLColumn> newColumns) throws Exception {
-        File file = new File(parentDatabase.getDbDirectory() + name + ".csv");
-        file.delete();
-        if (!file.createNewFile()) throw new Exception("Table " + name + " already exists in database " + parentDatabase.getDbName());
-
-        this.columns.addAll(newColumns);
-
-        BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-
-        for (SQLColumn column : columns){
-            writer.write(column.getTitle() + ",");
-        }
-
-        writer.write("\n");
-        writer.close();
-
-        if (columns.size() > 1)
-            for (int i = 0; i < columns.size()-1; i++) columns.get(i).setNextColumn(columns.get(i+1));
-
-        return true;
-    }
-
-    /**
-     * Drops listed columns from table.
-     * @param names Names of columns to dropDatabase.
-     * @return True if columns were all successfully dropped, false otherwise.
-     * @throws Exception If the table dropDatabase was unsuccessful in the file.
-     */
-    public boolean alterTableDrop(List<String> names) throws Exception {
-        File file = new File(parentDatabase.getDbDirectory() + name + ".csv");
-        file.delete();
-        if (!file.createNewFile()) throw new Exception("Table " + name + " already exists in database " + parentDatabase.getDbName());
-        ArrayList<SQLColumn> toRemove = new ArrayList<>();
-
-        columns.forEach(column -> {
-            if (names.contains(column.getTitle().split(" ")[0])) toRemove.add(column);
-        });
-
-        if (!columns.removeAll(toRemove)) throw new Exception("!Failed to alter table because the specified columns were not found.");
-
-        BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-
-        for (SQLColumn column : columns){
-            writer.write(column.getTitle() + ",");
-        }
-
-        writer.write("\n");
-        writer.close();
-
-        if (columns.size() > 1)
-            for (int i = 0; i < columns.size()-1; i++) columns.get(i).setNextColumn(columns.get(i+1));
-
-        return true;
-    }
-
-    /**
      * Selects all data from the table.
      * @return String format of all table data.
      */
-    public String selectAll(){
+    public String selectAll() {
         StringBuilder infoString = new StringBuilder();
 
         for (SQLColumn column : columns){
@@ -469,6 +330,23 @@ public class Table {
         return infoString.toString();
     }
 
+    public void save() throws IOException {
+        if (columns.isEmpty() && tableFile.createNewFile()) return;
+
+        if (!(tableFile.delete() && tableFile.createNewFile())) return;
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tableFile));
+        for (SQLColumn column : columns){
+            writer.write(column.getTitle() + ",");
+        }
+        for (int i = 0; i < columns.get(0).getColumnSize(); i++) {
+            for (SQLColumn c : columns) {
+                writer.write(c.getDataAtRow(i) + ",");
+            }
+        }
+
+    }
+
     private SQLColumn getColumnWithTitle(String title){
         for (SQLColumn c : columns){
             String columnTitle = c.getTitle().split(" ")[0];
@@ -476,35 +354,6 @@ public class Table {
                 return c;
         }
         return null;
-    }
-
-    private void updateFile(){
-        File file = new File(parentDatabase.getDbDirectory() + name + ".csv");
-        file.delete();
-
-        try {
-            if (!file.createNewFile()) return;
-
-            BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-
-            for (SQLColumn column : columns){
-                writer.write(column.getTitle() + ",");
-            }
-
-            writer.write("\n");
-
-            for (int i = 1; i <= columns.get(0).getColumnSize(); i++){
-                for (SQLColumn column : columns)
-                    writer.write(column.getDataAtRow(i) + ",");
-                writer.write("\n");
-            }
-
-            writer.close();
-
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private String parseJoinString(String joinString){

@@ -14,6 +14,7 @@ import io.github.gafarrell.commands.modification.UpdateCmd;
 import io.github.gafarrell.commands.query.JoinedSelect;
 import io.github.gafarrell.commands.query.SelectCmd;
 import io.github.gafarrell.commands.query.UseCmd;
+import io.github.gafarrell.database.DatabaseConnector;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -25,12 +26,11 @@ import java.util.regex.Pattern;
 public class SQLScriptParser {
 
     private enum SQLCommandTokenizer{
-
         CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+?)(\\((.+)\\)|$)", Pattern.CASE_INSENSITIVE)),
         USE(Pattern.compile("USE (.+)", Pattern.CASE_INSENSITIVE)),
         DELETE(Pattern.compile("DELETE FROM (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
         DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)", Pattern.CASE_INSENSITIVE)),
-        SELECT(Pattern.compile("SELECT (.+) FROM (.+?) (WHERE|$|ON)(.+)?", Pattern.CASE_INSENSITIVE)),
+        SELECT(Pattern.compile("SELECT (.+) FROM (.+?) (WHERE|$)(.+)?", Pattern.CASE_INSENSITIVE)),
         ALTER(Pattern.compile("ALTER TABLE (.+) (ADD|DROP) (.+)", Pattern.CASE_INSENSITIVE)),
         UPDATE(Pattern.compile("UPDATE (.+) SET (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
         INSERT(Pattern.compile("INSERT INTO (.+) values\\((.+)\\)", Pattern.CASE_INSENSITIVE)),
@@ -116,17 +116,23 @@ public class SQLScriptParser {
 
                 case SELECT -> {
                     if (matcher.groupCount() == 4 && (matcher.group(3).equalsIgnoreCase("on") || matcher.group(2).split(",").length > 1)){
-                        Debug.writeLine("Creating jointed select.");
                         commands.add(new JoinedSelect(matcher.group(1), matcher.group(2), matcher.group(4)));
                     }
                     else {
-                        Debug.writeLine("Creating regular select.");
                         commands.add(new SelectCmd(matcher.group(2), matcher.group(1), matcher.groupCount() == 4 ? matcher.group(4) : ""));
                     }
                 }
 
                 case INSERT -> {
                     commands.add(new InsertCmd(matcher.group(1), Arrays.asList(matcher.group(2).split(","))));
+                }
+
+                case COMMIT -> {
+                    DatabaseConnector.getInstance().commit();
+                }
+
+                case BEGIN_TRANSACTION -> {
+                    DatabaseConnector.getInstance().beginTransaction();
                 }
             }
         }

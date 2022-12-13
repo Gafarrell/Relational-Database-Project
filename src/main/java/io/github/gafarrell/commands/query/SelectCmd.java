@@ -14,6 +14,7 @@ public class SelectCmd extends SQLCommand {
         this.columns = columns.trim();
     }
 
+    //TODO: Transfer control to the execute function rather than the database class.
     @Override
     public boolean execute() throws Exception {
         if (DatabaseConnector.getInstance().notUsingDB()){
@@ -33,10 +34,5 @@ public class SelectCmd extends SQLCommand {
             System.out.println(DatabaseConnector.getInstance().getCurrent().select(tableName, columns, condition));
 
         return true;
-    }
-
-    @Override
-    public String getCommandString() {
-        return "SELECT * FROM " + tableName;
     }
 }
