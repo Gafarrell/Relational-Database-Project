@@ -75,6 +75,8 @@ public class SQLScriptParser {
             Matcher matcher = tokenizer.pattern.matcher(s);
             if (!matcher.matches()) continue;
 
+            DatabaseConnector.getInstance().updateDatabases();
+
             Debug.writeLine(tokenizer);
             switch (tokenizer){
                 case USE -> {
@@ -104,7 +106,7 @@ public class SQLScriptParser {
                         String tableName = matcher.group(2);
                         List<String> parameters = new ArrayList<>();
                         Debug.writeLine(matcher.groupCount());
-                        if (matcher.groupCount() == 4) parameters = Arrays.asList(matcher.group(4).split(","));
+                        if (matcher.group(4) != null) parameters = Arrays.asList(matcher.group(4).split(","));
                         commands.add(new TableCreateCmd(tableName, parameters));
                     }
                 }

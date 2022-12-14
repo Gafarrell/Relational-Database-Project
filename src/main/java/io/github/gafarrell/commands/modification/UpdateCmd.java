@@ -55,7 +55,7 @@ public class UpdateCmd extends SQLCommand {
             return false;
         }
 
-        if (!currentTable.containsColumn(whereTokens[0])){
+        if (!currentTable.hasColumn(whereTokens[0])){
             commandMessage = RED + "! Table " + table + " does not contain column " + whereTokens[0];
             return false;
         }
@@ -78,6 +78,7 @@ public class UpdateCmd extends SQLCommand {
 
         if (connector.isTransactionActive()) connector.lockTable(currentTable);
         commandMessage = GREEN + dataCount + " entries modified.";
+        DatabaseConnector.getInstance().dataChanged = true;
         return true;
     }
 }

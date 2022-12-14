@@ -1,5 +1,7 @@
 package io.github.gafarrell.database;
 
+import io.github.gafarrell.Debug;
+
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,8 +16,10 @@ public class DatabaseConnector {
     private List<Table> lockedTables = new ArrayList<>();
     private Database current;
     private final File lockFile = new File("databases/lockfile.csv");
+    private final File dbGlobalDir = new File("databases/");
 
     private boolean transactionActive = false;
+    public boolean dataChanged = false;
 
     // Initializes the database connector singleton.
     public static boolean Initialize() throws Exception {
@@ -37,8 +41,6 @@ public class DatabaseConnector {
     // Reads the files from the database directory and loads the data from internal files.
     // Alternatively will initialize the database directory if it does not already exist.
     private DatabaseConnector() throws Exception {
-        File dbGlobalDir = new File("databases/");
-
         if (!dbGlobalDir.exists())
         {
             System.out.println("\tUnable to find existing databases. Initializing new directory...");
@@ -53,6 +55,13 @@ public class DatabaseConnector {
             System.out.println("\tDatabases directory found. Attempting to load existing databases...");
         }
 
+        if (lockFile.createNewFile()){
+            System.out.println("\tLock file generated.");
+        }
+        else {
+            System.out.println("\tLock file found.");
+        }
+
         Stream<Path> contents = Files.list(dbGlobalDir.toPath());
         ArrayList<File> directories = new ArrayList<>();
 
@@ -61,13 +70,6 @@ public class DatabaseConnector {
                 directories.add(path.toFile());
             }
         });
-
-        if (lockFile.createNewFile()){
-            System.out.println("Lock file generated.");
-        }
-        else {
-            System.out.println("Lock file found, loading.");
-        }
 
         if (directories.size() == 0) {
             System.out.println("\tNo databases found.");
@@ -79,32 +81,7 @@ public class DatabaseConnector {
             activeDatabases.putIfAbsent(f.getName(), new Database(f));
         }
 
-        loadLockFile();
         System.out.println("\tSuccessfully loaded " + activeDatabases.keySet().size() + " database(s)");
-    }
-
-    private void loadLockFile() throws IOException {
-        BufferedReader lockFileReader = new BufferedReader(new FileReader(lockFile));
-
-        String line = "";
-        while ((line = lockFileReader.readLine()) != null){
-            String[] lockedTables = line.split(",");
-
-            for (String pair : lockedTables){
-                String[] tableDbPair = pair.split(":");
-                String database = tableDbPair[0], table = tableDbPair[1];
-
-                if (activeDatabases.containsKey(database)){
-                    Database db = activeDatabases.get(database);
-                    if (db.containsTable(table)){
-                        Table tb = db.getTable(table);
-                        this.lockedTables.add(tb);
-                    }
-                }
-            }
-        }
-
-        lockFileReader.close();
     }
 
     public void lockTable(Table table) throws IOException {
@@ -120,8 +97,6 @@ public class DatabaseConnector {
     public void unlockAllTables() throws Exception {
         for (Table t : lockedTables){
             unlockTable(t);
-            if (!t.getParentDatabase().getTables().containsValue(t))
-                t.delete();
         }
     }
 
@@ -136,6 +111,9 @@ public class DatabaseConnector {
             BufferedWriter lockFileWriter = new BufferedWriter(new FileWriter(lockFile));
             line = line.replaceAll(table.getParentDatabase().getDbName() + ":" + table.getTableName() + ",", "");
             lockFileWriter.write(line);
+
+            lockFileWriter.close();
+            lockFileReader.close();
         }
     }
 
@@ -151,6 +129,31 @@ public class DatabaseConnector {
         return false;
     }
 
+    public void updateDatabases() throws Exception {
+        Stream<Path> contents = Files.list(dbGlobalDir.toPath());
+        ArrayList<File> directories = new ArrayList<>();
+
+        contents.forEach(path -> {
+            if (Files.isDirectory(path)){
+                directories.add(path.toFile());
+            }
+        });
+
+        if (directories.size() == 0) {
+            System.out.println("\tNo databases found.");
+            return;
+        }
+
+        for (File f : directories){
+            activeDatabases.putIfAbsent(f.getName(), new Database(f));
+        }
+
+        for (Database d : activeDatabases.values()){
+            File f = new File(d.getDbDirectory());
+            if (!directories.contains(f)) activeDatabases.remove(d.getDbName());
+        }
+    }
+
     public HashMap<String, Database> getActiveDatabases(){return activeDatabases;}
     public void setActiveDatabases(HashMap<String, Database> activeDatabases) { this.activeDatabases = activeDatabases; }
 
@@ -161,6 +164,7 @@ public class DatabaseConnector {
     }
 
     public void commit() throws Exception {
+        Debug.writeLine("Committing...");
         transactionActive = false;
         saveAll();
         unlockAllTables();
@@ -168,8 +172,39 @@ public class DatabaseConnector {
 
     public void saveAll() throws IOException {
         for (Database db : activeDatabases.values()){
+            Debug.writeLine("Saving database " + db.getDbName());
             db.save();
         }
+    }
+
+    public void abortCommit() throws Exception {
+        transactionActive = false;
+        dataChanged = false;
+
+        activeDatabases.clear();
+
+        Stream<Path> contents = Files.list(dbGlobalDir.toPath());
+        ArrayList<File> directories = new ArrayList<>();
+
+        contents.forEach(path -> {
+            if (Files.isDirectory(path)){
+                directories.add(path.toFile());
+            }
+        });
+
+        if (directories.size() == 0) {
+            System.out.println("\tNo databases found.");
+            return;
+        }
+
+        for (File f : directories){
+            if (activeDatabases.containsKey(f.getName())) throw new Exception("Duplicate database files in database directory!");
+            activeDatabases.putIfAbsent(f.getName(), new Database(f));
+        }
+    }
+
+    public boolean isAbortCommit(){
+        return !dataChanged && transactionActive;
     }
 
     // Boolean for if the database connector is currently using a database.

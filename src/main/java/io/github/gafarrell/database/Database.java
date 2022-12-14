@@ -79,6 +79,7 @@ public class Database {
 
     public void save() throws IOException {
         for (Table t : tables.values()){
+            Debug.writeLine("Saving table " + t.getTableName());
             t.save();
         }
     }
@@ -88,7 +89,7 @@ public class Database {
      * @param from Table name.
      * @return Returns the string formatted data.
      */
-    public String selectAll(String from){
+    public String selectAll(String from) throws Exception {
         Debug.writeLine("Just selecting all.");
         if (tables.containsKey(from)){
             return tables.get(from).selectAll();

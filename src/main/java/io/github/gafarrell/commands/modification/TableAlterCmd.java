@@ -90,7 +90,10 @@ public class TableAlterCmd extends SQLCommand {
             currentColumns.add(column);
         }
         table.setColumns(currentColumns);
-        DatabaseConnector.getInstance().lockTable(table);
+
+        if (DatabaseConnector.getInstance().isTransactionActive())
+            DatabaseConnector.getInstance().lockTable(table);
+
         commandMessage = GREEN + "1 New Record Inserted";
         return true;
     }
@@ -116,7 +119,10 @@ public class TableAlterCmd extends SQLCommand {
         }
 
         table.setColumns(columns);
-        DatabaseConnector.getInstance().lockTable(table);
+
+        if (DatabaseConnector.getInstance().isTransactionActive())
+            DatabaseConnector.getInstance().lockTable(table);
+
         commandMessage = GREEN + "Removed " + targetColumns.length + " column(s).";
         return true;
     }

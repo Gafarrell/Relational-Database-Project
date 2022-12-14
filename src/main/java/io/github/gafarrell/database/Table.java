@@ -96,13 +96,39 @@ public class Table {
         return false;
     }
 
-    public void setColumns(List<SQLColumn> columns){this.columns = columns;}
-    public boolean containsColumn(String title){
-        for (SQLColumn c : columns)
-            if (c.getTitle().equals(title))
-                return true;
-        return false;
+    public void updateFromFile() throws Exception {
+        BufferedReader reader = new BufferedReader(new FileReader(tableFile));
+
+        String line = reader.readLine();
+
+        if (line == null || line.isEmpty()) {
+            Debug.writeLine("Closing early");
+            reader.close();
+            return;
+        }
+        Debug.writeLine("Starting with these: " + line);
+        String[] columns = line.split(",");
+        this.columns = new ArrayList<>();
+
+        for (String column : columns){
+            String parsable = column.replaceAll("[()]", " ").trim();
+            String[] columnInfo = parsable.split(" ");
+            switch (columnInfo[1].toLowerCase()) {
+                case "int" -> this.columns.add(new IntColumn(column));
+                case "float" -> this.columns.add(new FloatColumn(column));
+                case "char", "varchar" -> this.columns.add(new StringColumn(column, Integer.parseInt(columnInfo[2])));
+            }
+        }
+
+        while ((line = reader.readLine()) != null){
+            List<String> data = Arrays.asList(line.split(","));
+            addData(data);
+        }
+
+        reader.close();
     }
+
+    public void setColumns(List<SQLColumn> columns){this.columns = columns;}
 
     public String getTableName() {
         return name;
@@ -113,7 +139,8 @@ public class Table {
      * Selects all data from the table.
      * @return String format of all table data.
      */
-    public String selectAll() {
+    public String selectAll() throws Exception {
+        updateFromFile();
         StringBuilder infoString = new StringBuilder();
 
         for (SQLColumn column : columns){
