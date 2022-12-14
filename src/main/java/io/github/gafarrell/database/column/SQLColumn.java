@@ -1,5 +1,7 @@
 package io.github.gafarrell.database.column;
 
+import io.github.gafarrell.Debug;
+
 import java.util.List;
 import java.util.Map;
 
@@ -15,17 +17,12 @@ public abstract class SQLColumn {
     public SQLColumn(String title)
     {
         this.title = title;
-    }
-
-    public void setNextColumn(SQLColumn nextColumn) {
-        if (this.nextColumn != null) this.nextColumn.prevColumn = nextColumn;
-        this.nextColumn = nextColumn;
+        Debug.writeLine("Created sql column with title: " + title);
     }
 
     public List<Object> getData() {return data;}
 
     public abstract SQLColumn clone();
-    public abstract SQLColumn deepClone();
 
     public String getTitle() {
         return title.trim();
@@ -34,7 +31,6 @@ public abstract class SQLColumn {
     public abstract String getDataAtRow(int row);
     public abstract boolean queueData(String data);
     public abstract int[] select(String operator, String value);
-    public abstract Map<Integer, List<Integer>> selectWhere(String operator, SQLColumn otherColumn);
     public abstract void clearQueue();
     public abstract void insertQueue();
     public abstract void setDataAtRow(int row, String data);

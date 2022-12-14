@@ -79,30 +79,6 @@ public class IntColumn extends SQLColumn{
         return arr;
     }
 
-    @Override
-    public Map<Integer, List<Integer>> selectWhere(String operator, SQLColumn otherColumn) {
-        if (!(otherColumn instanceof IntColumn castedCol)) return null;
-
-        HashMap<Integer, List<Integer>> items = new HashMap<>();
-
-        List<Object> otherData = castedCol.data;
-
-        for (int i = 0; i < data.size(); i++){
-            items.put(i, new ArrayList<>());
-            for (int j = 0; j < otherData.size(); j++){
-                switch (operator) {
-                    case "=" ->  { if (data.get(i).equals(otherData.get(j))) items.get(i).add(j); }
-                    case "<=" -> { if ((Integer) data.get(i) <= (Integer) otherData.get(j)) items.get(i).add(j); }
-                    case ">=" -> { if ((Integer) data.get(i) >= (Integer) otherData.get(j)) items.get(i).add(j); }
-                    case "<" ->  { if ((Integer) data.get(i) < (Integer) otherData.get(j))  items.get(i).add(j); }
-                    case ">" ->  { if ((Integer) data.get(i) > (Integer) otherData.get(j))  items.get(i).add(j); }
-                    default -> { return null; }
-                }
-            }
-        }
-
-        return items;
-    }
 
     @Override
     public void clearQueue() {

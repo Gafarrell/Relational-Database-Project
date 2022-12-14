@@ -15,7 +15,6 @@ public class Table {
     private String name;
     private File tableFile;
     private Database parentDatabase;
-    private boolean locked = false;
     private List<SQLColumn> columns = new ArrayList<>();
 
     /**
@@ -26,88 +25,17 @@ public class Table {
      * @throws Exception If the table file was unable to be created.
      */
     public Table(String name, ArrayList<SQLColumn> columns, Database parent) throws Exception {
-        this.name = name;
+        this.name = name.trim();
         this.parentDatabase = parent;
         this.columns = columns;
 
-        if (columns.size() > 1)
-            for (int i = 0; i < columns.size()-1; i++) columns.get(i).setNextColumn(columns.get(i+1));
+        Debug.writeLine("Table created: " + name + ", " + parent.getDbName());
+        Debug.writeLine("Contains " + columns.size() + " columns");
 
-        tableFile = new File(parent.getDbDirectory() + name + ".csv");
+        tableFile = new File(parent.getDbDirectory() + "/" + name + ".csv");
         if (!tableFile.createNewFile()) throw new Exception("!Failed to create " + name + " because it already exists.");
 
-        if (columns.isEmpty()) {
-            return;
-        }
-
-        BufferedWriter writer = new BufferedWriter(new FileWriter(tableFile, true));
-
-        for (SQLColumn column : columns){
-            writer.write(column.getTitle() + ",");
-        }
-        writer.write("\n");
-        writer.close();
-    }
-
-    /**
-     * Table joining constructor
-     * @param leftTable First table.
-     * @param rightTable Second table.
-     */
-    public Table(Table leftTable, Table rightTable, String joinString, String onString) throws Exception {
-        String[] onOperations = onString.trim().split(" ");
-        Debug.writeArray(onOperations);
-
-        String parseJoin = parseJoinString(joinString);
-        Debug.writeLine(parseJoin);
-        Debug.writeLine("We finally made it!!!!");
-        if (onOperations.length != 3) return;
-
-        SQLColumn leftCol = leftTable.getColumnWithTitle(onOperations[0].split("\\.")[1]);
-        String operator = onOperations[1];
-        SQLColumn rightCol = rightTable.getColumnWithTitle(onOperations[2].split("\\.")[1]);
-
-        if (leftCol != null && rightCol != null)
-        {
-            if (parseJoin.equals(",")){
-                for (SQLColumn c : leftTable.columns)
-                    columns.add(c.deepClone());
-                for (SQLColumn c : rightTable.columns)
-                    columns.add(c.deepClone());
-            }
-            for (SQLColumn c : leftTable.columns)
-                columns.add(c.clone());
-            for (SQLColumn c : rightTable.columns)
-                columns.add(c.clone());
-
-            Map<Integer, List<Integer>> insertions = leftCol.selectWhere(operator, rightCol);
-            Set<Integer> keys = insertions.keySet();
-            List<String> data = new ArrayList<>();
-
-            if (parseJoin.equalsIgnoreCase("left outer join")){
-                for (Integer i : keys) {
-                    for (Integer j : insertions.get(i)){
-                        for (SQLColumn c : leftTable.columns)
-                            data.add(c.getDataAtRow(i));
-                        for (SQLColumn c : rightTable.columns)
-                            data.add(c.getDataAtRow(j));
-                        addData(data);
-                    }
-                }
-            }
-            else if (parseJoin.equalsIgnoreCase("inner join")){
-                for (Integer i : keys) {
-                    if (!insertions.get(i).isEmpty())
-                    for (Integer j : insertions.get(i)){
-                        for (SQLColumn c : leftTable.columns)
-                            data.add(c.getDataAtRow(i));
-                        for (SQLColumn c : rightTable.columns)
-                            data.add(c.getDataAtRow(j));
-                        addData(data);
-                    }
-                }
-            }
-        }
+        parent.put(this);
     }
 
     /**
@@ -116,8 +44,9 @@ public class Table {
      * @param parentDatabase Database this file will belong to.
      * @throws IOException Exception iof the file is unable to be read/opened.
      */
-    Table(File f, Database parentDatabase) throws Exception {
+    public Table(File f, Database parentDatabase) throws Exception {
         this.parentDatabase = parentDatabase;
+        tableFile = f;
         name = f.getName().substring(0, f.getName().length()-4);
 
         BufferedReader reader = new BufferedReader(new FileReader(f));
@@ -129,7 +58,7 @@ public class Table {
             return;
         }
 
-        List<String> columns = Arrays.stream(line.split(",")).toList();
+        String[] columns = line.split(",");
 
         for (String column : columns){
             String parsable = column.replaceAll("[()]", " ").trim();
@@ -147,48 +76,27 @@ public class Table {
         }
 
         reader.close();
-
-        for (int i = 0; i < this.columns.size()-1; i++){
-            this.columns.get(i).setNextColumn(this.columns.get(i));
-        }
     }
 
+    // Column actions
     public SQLColumn getColumn(String title){
-        for (SQLColumn c : columns)
-            if (c.getTitle().equalsIgnoreCase(title))
-                return c;
-
-        return null;
+        return getColumnWithTitle(title);
     }
+    public List<SQLColumn> getColumns(){return columns;}
 
     public boolean hasColumn(String title){
-        for (SQLColumn c : columns)
-            if (c.getTitle().equalsIgnoreCase(title))
+        title = title.trim();
+        for (SQLColumn c : columns) {
+            String columnTitle = c.getTitle().split(" ")[0];
+            Debug.writeLine(columnTitle);
+            if (columnTitle.equalsIgnoreCase(title))
                 return true;
+        }
 
         return false;
     }
 
-    private void addData(List<String> values) throws Exception {
-        if (values.size() != columns.size()) throw new Exception("Not enough arguments!");
-        for (int i = 0; i < values.size(); i++){
-            if (!columns.get(i).queueData(values.get(i))){
-                dequeueDataFromColumns();
-                throw new Exception("Argument mismatch!");
-            }
-        }
-        insertQueuedData();
-    }
-
-    public void lock(){locked = true;}
-    public void unlock(){locked = false;}
-
-    public boolean isLocked(){return locked;}
-
-    public List<SQLColumn> getColumns(){return columns;}
-
     public void setColumns(List<SQLColumn> columns){this.columns = columns;}
-
     public boolean containsColumn(String title){
         for (SQLColumn c : columns)
             if (c.getTitle().equals(title))
@@ -196,57 +104,39 @@ public class Table {
         return false;
     }
 
-    private void dequeueDataFromColumns(){
-        for (SQLColumn column : columns){
-            column.clearQueue();
-        }
-    }
-
-    private void insertQueuedData(){
-        for (SQLColumn column : columns){
-            column.insertQueue();
-        }
-    }
-
-    /**
-     * @return Name of the table.
-     */
-    public String getName() {
+    public String getTableName() {
         return name;
     }
+    public Database getParentDatabase() {return parentDatabase;}
 
     /**
-     * @return True if the table was successfully deleted. False otherwise.
+     * Selects all data from the table.
+     * @return String format of all table data.
      */
-    public boolean drop(){
-        File tableFile = new File("databases/" + parentDatabase.getDbName() + "/" + name + ".csv");
-        if (tableFile.exists()){
-            try {
-                Files.delete(tableFile.toPath());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    public String selectAll() {
+        StringBuilder infoString = new StringBuilder();
+
+        for (SQLColumn column : columns){
+            infoString.append(column.getTitle()).append(" | ");
         }
-        return true;
-    }
-
-    /**
-     * @return String format of the table's columns.
-     */
-    @Override
-    public String toString(){
-        StringBuilder infoString = new StringBuilder("=================\n").append("\t").append(name).append("\n=================");
 
         if (columns.size() > 0) {
-            infoString.append("\n");
-            for (SQLColumn column : columns) {
-                infoString.append(column.getTitle()).append(" | ");
+            for (int i = 0; i < columns.get(0).getColumnSize(); i++){
+                infoString.append("\n");
+                for (SQLColumn column : columns) {
+                    infoString.append(column.getDataAtRow(i))
+                            .append(" | ");
+                }
             }
-            infoString.append('\n');
         }
         return infoString.toString();
     }
 
+    /**
+     * Select all values from columns with given titles.
+     * @param columns Comma separated list of columns.
+     * @return Printable format of column data.
+     */
     public String selectAll(String columns) {
         StringBuilder builder = new StringBuilder();
 
@@ -272,10 +162,16 @@ public class Table {
                 builder.append(col.getDataAtRow(i)).append(" | ");
             builder.append("\n");
         }
-        
+
         return builder.toString();
     }
 
+    /**
+     * Select values that match the conditions from the specified columns.
+     * @param showColumnString Columns to select.
+     * @param conditions Condition on which rows to select from the columns.
+     * @return Returns printable format of selected rows/columns.
+     */
     public String select(String showColumnString, String conditions) {
         StringBuilder builder = new StringBuilder();
 
@@ -308,28 +204,9 @@ public class Table {
         return builder.toString();
     }
 
-    /**
-     * Selects all data from the table.
-     * @return String format of all table data.
+    /**Save the table's file to disk.
+     * @throws IOException General file writing exception.
      */
-    public String selectAll() {
-        StringBuilder infoString = new StringBuilder();
-
-        for (SQLColumn column : columns){
-            infoString.append(column.getTitle()).append(" | ");
-        }
-
-        if (columns.size() > 0) {
-            for (int i = 0; i < columns.get(0).getColumnSize(); i++){
-                infoString.append("\n");
-                for (SQLColumn column : columns)
-                    infoString.append(column.getDataAtRow(i))
-                                .append(" | ");
-            }
-        }
-        return infoString.toString();
-    }
-
     public void save() throws IOException {
         if (columns.isEmpty() && tableFile.createNewFile()) return;
 
@@ -339,26 +216,78 @@ public class Table {
         for (SQLColumn column : columns){
             writer.write(column.getTitle() + ",");
         }
+        writer.write("\n");
+
+        if (columns.size() == 0) {
+            writer.close();
+            return;
+        }
+
         for (int i = 0; i < columns.get(0).getColumnSize(); i++) {
             for (SQLColumn c : columns) {
                 writer.write(c.getDataAtRow(i) + ",");
             }
+            writer.write("\n");
         }
+        writer.close();
+    }
 
+    public void delete() throws Exception {
+        if (!tableFile.delete()){
+            throw new Exception("Table file " + tableFile.getName() + " unable to be deleted");
+        }
+    }
+
+    // Private functions.
+    private void addData(List<String> values) throws Exception {
+        if (values.size() != columns.size()) throw new Exception("Not enough arguments!");
+        for (int i = 0; i < values.size(); i++){
+            if (!columns.get(i).queueData(values.get(i))){
+                dequeueDataFromColumns();
+                throw new Exception("Argument mismatch!");
+            }
+        }
+        insertQueuedData();
+    }
+
+    private void dequeueDataFromColumns(){
+        for (SQLColumn column : columns){
+            column.clearQueue();
+        }
+    }
+
+    private void insertQueuedData(){
+        for (SQLColumn column : columns){
+            column.insertQueue();
+        }
     }
 
     private SQLColumn getColumnWithTitle(String title){
+        Debug.writeLine("Finding column with title: " + title);
         for (SQLColumn c : columns){
             String columnTitle = c.getTitle().split(" ")[0];
+            Debug.writeLine(columnTitle);
             if (title.equals(columnTitle))
                 return c;
         }
         return null;
     }
 
-    private String parseJoinString(String joinString){
-        if (joinString.contains(",")) return ",";
-        if (joinString.contains("left outer join")) return "left outer join";
-        else return "inner join";
+    // Overrides
+    /**
+     * @return String format of the table's columns.
+     */
+    @Override
+    public String toString(){
+        StringBuilder infoString = new StringBuilder("=================\n").append("\t").append(name).append("\n=================");
+
+        if (columns.size() > 0) {
+            infoString.append("\n");
+            for (SQLColumn column : columns) {
+                infoString.append(column.getTitle()).append(" | ");
+            }
+            infoString.append('\n');
+        }
+        return infoString.toString();
     }
 }

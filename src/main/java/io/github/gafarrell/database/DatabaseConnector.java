@@ -10,10 +10,10 @@ import java.util.stream.Stream;
 
 public class DatabaseConnector {
     private static DatabaseConnector instance;
-    private static HashMap<String, Database> activeDatabases = new HashMap<>();
-    private static List<Table> lockedTables = new ArrayList<>();
-    private static Database current;
-    private static final File lockFile = new File("databases/lockfile.csv");
+    private HashMap<String, Database> activeDatabases = new HashMap<>();
+    private List<Table> lockedTables = new ArrayList<>();
+    private Database current;
+    private final File lockFile = new File("databases/lockfile.csv");
 
     private boolean transactionActive = false;
 
@@ -62,6 +62,13 @@ public class DatabaseConnector {
             }
         });
 
+        if (lockFile.createNewFile()){
+            System.out.println("Lock file generated.");
+        }
+        else {
+            System.out.println("Lock file found, loading.");
+        }
+
         if (directories.size() == 0) {
             System.out.println("\tNo databases found.");
             return;
@@ -72,14 +79,7 @@ public class DatabaseConnector {
             activeDatabases.putIfAbsent(f.getName(), new Database(f));
         }
 
-        if (lockFile.createNewFile()){
-            System.out.println("Lock file generated.");
-        }
-        else {
-            System.out.println("Lock file found, loading.");
-            loadLockFile();
-        }
-
+        loadLockFile();
         System.out.println("\tSuccessfully loaded " + activeDatabases.keySet().size() + " database(s)");
     }
 
@@ -98,44 +98,61 @@ public class DatabaseConnector {
                     Database db = activeDatabases.get(database);
                     if (db.containsTable(table)){
                         Table tb = db.getTable(table);
-                        tb.lock();
-                        DatabaseConnector.lockedTables.add(tb);
+                        this.lockedTables.add(tb);
                     }
                 }
             }
         }
+
+        lockFileReader.close();
     }
 
-    public void checkLocks() throws IOException {
-        BufferedReader lockFileReader = new BufferedReader(new FileReader(lockFile));
+    public void lockTable(Table table) throws IOException {
+        lockedTables.add(table);
 
-        List<Table> newLockedTables = new ArrayList<>();
-        String line = "";
-        while ((line = lockFileReader.readLine()) != null){
-            String[] lockedTables = line.split(",");
+        BufferedWriter lockFileWriter = new BufferedWriter(new FileWriter(lockFile));
 
-            for (String pair : lockedTables){
-                String[] tableDbPair = pair.split(":");
-                String database = tableDbPair[0], table = tableDbPair[1];
+        lockFileWriter.write(table.getParentDatabase().getDbName() + ":" + table.getTableName() + ",");
 
-                if (activeDatabases.containsKey(database)){
-                    Database db = activeDatabases.get(database);
-                    if (db.containsTable(table)){
-                        Table tb = db.getTable(table);
-                        tb.lock();
-                        newLockedTables.add(tb);
-                    }
-                }
-            }
-        }
+        lockFileWriter.close();
+    }
 
+    public void unlockAllTables() throws Exception {
         for (Table t : lockedTables){
-            if (!newLockedTables.contains(t))
-                t.unlock();
+            unlockTable(t);
+            if (!t.getParentDatabase().getTables().containsValue(t))
+                t.delete();
         }
-
-        lockedTables = newLockedTables;
     }
+
+    public void unlockTable(Table table) throws IOException {
+        if (lockedTables.remove(table)){
+            BufferedReader lockFileReader = new BufferedReader(new FileReader(lockFile));
+            String line = lockFileReader.readLine();
+
+            lockFile.delete();
+            lockFile.createNewFile();
+
+            BufferedWriter lockFileWriter = new BufferedWriter(new FileWriter(lockFile));
+            line = line.replaceAll(table.getParentDatabase().getDbName() + ":" + table.getTableName() + ",", "");
+            lockFileWriter.write(line);
+        }
+    }
+
+    public boolean isTableLocked(Table table) throws IOException {
+        BufferedReader lockFileReader = new BufferedReader(new FileReader(lockFile));
+        String line = lockFileReader.readLine();
+
+        if (line != null && line.contains(table.getParentDatabase().getDbName() + ":" + table.getTableName()) && !lockedTables.contains(table)){
+            lockFileReader.close();
+            return true;
+        }
+        lockFileReader.close();
+        return false;
+    }
+
+    public HashMap<String, Database> getActiveDatabases(){return activeDatabases;}
+    public void setActiveDatabases(HashMap<String, Database> activeDatabases) { this.activeDatabases = activeDatabases; }
 
     public boolean isTransactionActive(){return transactionActive;}
 
@@ -143,8 +160,10 @@ public class DatabaseConnector {
         transactionActive = true;
     }
 
-    public void commit(){
+    public void commit() throws Exception {
         transactionActive = false;
+        saveAll();
+        unlockAllTables();
     }
 
     public void saveAll() throws IOException {
@@ -165,23 +184,6 @@ public class DatabaseConnector {
             return true;
         }
         throw new Exception("!Failed database " + name + " does not exist!");
-    }
-
-    // Creates a specified DB.
-    public boolean createDatabase(String name) throws Exception {
-        File file = new File("databases/" + name);
-        if (file.exists()) return false;
-
-        return (activeDatabases.putIfAbsent(name, new Database(name)) == null);
-    }
-
-    // Drops a specified DB.
-    public boolean dropDatabase(String name) throws Exception {
-        if (activeDatabases.containsKey(name)){
-            activeDatabases.get(name).dropDatabase();
-            return activeDatabases.remove(name) != null;
-        }
-        else return false;
     }
 
     // Gets the currently used DB.

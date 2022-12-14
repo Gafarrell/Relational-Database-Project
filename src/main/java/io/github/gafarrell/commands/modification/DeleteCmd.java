@@ -1,5 +1,6 @@
 package io.github.gafarrell.commands.modification;
 
+import io.github.gafarrell.Debug;
 import io.github.gafarrell.commands.SQLCommand;
 import io.github.gafarrell.database.Database;
 import io.github.gafarrell.database.DatabaseConnector;
@@ -17,20 +18,29 @@ public class DeleteCmd extends SQLCommand  {
     public DeleteCmd(String table, String where){
         this.table = table.trim();
         this.where = where.trim();
+
+        Debug.writeLine("Table: " + table);
+        Debug.writeLine("Where: " + where);
     }
 
     @Override
     public boolean execute() throws Exception {
-        Database current = DatabaseConnector.getInstance().getCurrent();
+        DatabaseConnector connector = DatabaseConnector.getInstance();
+        Database current = connector.getCurrent();
         Table targetTable = current.containsTable(table) ? current.getTable(table) : null;
 
         if (targetTable == null) {
             commandMessage = RED + "!Table " + table + " does not exist.";
             return false;
         }
+        if (connector.isTableLocked(targetTable)){
+            commandMessage = RED + "! Table " + table + " is locked.";
+            return false;
+        }
+
         String[] whereTokens = where.split(" ");
 
-        if (whereTokens.length == 3){
+        if (whereTokens.length != 3){
             commandMessage = RED + "!Where statement invalid.";
             return false;
         }
@@ -73,6 +83,9 @@ public class DeleteCmd extends SQLCommand  {
                 }
             }
         }
+
+        if (connector.isTransactionActive()) connector.lockTable(targetTable);
+        else targetTable.save();
 
         commandMessage = GREEN + "Successfully removed " + dataRemoved + " entries";
         return true;

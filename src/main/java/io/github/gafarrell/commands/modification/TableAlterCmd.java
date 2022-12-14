@@ -25,7 +25,9 @@ public class TableAlterCmd extends SQLCommand {
 
     @Override
     public boolean execute() throws Exception {
-        if (DatabaseConnector.getInstance().notUsingDB()){
+        DatabaseConnector connector = DatabaseConnector.getInstance();
+
+        if (connector.notUsingDB()){
             commandMessage = "!Failed: No database currently being used.";
             return false;
         }
@@ -36,12 +38,16 @@ public class TableAlterCmd extends SQLCommand {
             commandMessage = RED + "! Table " + tableToEdit + " does not exist.";
             return false;
         }
+
+        Table table = current.getTable(tableToEdit);
+
+
         switch (parameters.get(0).toLowerCase()){
             case "drop" -> {
-                return executeDrop(current);
+                return executeDrop(table);
             }
             case "add" -> {
-                return executeAdd(current);
+                return executeAdd(table);
             }
             default ->{
                 commandMessage = RED + "! Not a valid alter command";
@@ -51,8 +57,8 @@ public class TableAlterCmd extends SQLCommand {
     }
 
 
-    private boolean executeAdd(Database current){
-        Table table = current.getTable(tableToEdit);
+    private boolean executeAdd(Table table) throws Exception {
+
         List<SQLColumn> currentColumns = table.getColumns();
         String[] newColumns = parameters.get(1).split(",");
 
@@ -83,11 +89,14 @@ public class TableAlterCmd extends SQLCommand {
 
             currentColumns.add(column);
         }
+        table.setColumns(currentColumns);
+        DatabaseConnector.getInstance().lockTable(table);
+        commandMessage = GREEN + "1 New Record Inserted";
         return true;
     }
 
-    private boolean executeDrop(Database current){
-        Table table = current.getTable(tableToEdit);
+    private boolean executeDrop(Table table) throws Exception {
+
         List<SQLColumn> columns = table.getColumns();
         String[] targetColumns = parameters.get(1).split(",");
 
@@ -107,6 +116,7 @@ public class TableAlterCmd extends SQLCommand {
         }
 
         table.setColumns(columns);
+        DatabaseConnector.getInstance().lockTable(table);
         commandMessage = GREEN + "Removed " + targetColumns.length + " column(s).";
         return true;
     }

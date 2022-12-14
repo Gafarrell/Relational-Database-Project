@@ -9,11 +9,12 @@ public class CommitCmd extends SQLCommand {
         DatabaseConnector dbConnector = DatabaseConnector.getInstance();
 
         if (dbConnector.isTransactionActive()){
-            dbConnector.saveAll();
+            dbConnector.commit();
+            commandMessage = GREEN + "Transaction committed";
             return true;
         }
 
-        commandMessage = "No transaction active!";
+        commandMessage = RED + "Transaction abort!";
         return false;
     }
 }

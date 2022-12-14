@@ -1,15 +1,12 @@
 package io.github.gafarrell.database;
 
 import io.github.gafarrell.Debug;
-import io.github.gafarrell.database.column.SQLColumn;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Objects;
 
 public class Database {
     private String dbName;
@@ -21,10 +18,10 @@ public class Database {
      * @param dbName The database name.
      * @throws Exception Invalid DB Name or DB already exists.
      */
-    Database(String dbName) throws Exception {
+    public Database(String dbName) throws Exception {
         if (dbName.matches("[\\\\|/]")) throw new Exception("Invalid db name!");
 
-        this.dbName = dbName;
+        this.dbName = dbName.trim();
         this.dbFile = new File("databases/" + dbName);
 
         if (dbFile.exists()) {
@@ -41,7 +38,7 @@ public class Database {
      * @param f The file the database data is stored in.
      * @throws Exception If the database already exists or unable to access file.
      */
-    Database(File f) throws Exception {
+    public Database(File f) throws Exception {
         if (!f.exists() || !f.isDirectory()) throw new RuntimeException("! Unable to load database, file is not valid or does not exist");
 
         File[] directories = f.listFiles(pathname -> {
@@ -60,24 +57,6 @@ public class Database {
         dbName = f.getName();
     }
 
-    public Table getTable(String table){return tables.get(table);}
-    public File getDbFile(){return dbFile;}
-    public boolean containsTable(String table){return tables.containsKey(table);}
-
-    /**
-     * Adds a table to the database.
-     * @param name Name of the table.
-     * @param columns List of SQLColumns that the table will store.
-     * @return True if table successfully created. False otherwise.
-     * @throws Exception If the table data is not parsable.
-     */
-    public boolean addTable(String name, ArrayList<SQLColumn> columns) throws Exception {
-        if (tables.containsKey(name)){
-            return false;
-        }
-        return this.tables.putIfAbsent(name, new Table(name, columns, this)) == null;
-    }
-
     /**
      * Select data from a table given the specified search parameters.
      * @param from Name of the table.
@@ -88,19 +67,6 @@ public class Database {
             return tables.get(from).select(columns, conditional);
         }
         return "Table " + from + " does not exist.";
-    }
-
-    public String joinedSelect(String join, String columns, String on) throws Exception {
-        String[] joins = join.split("(,|left outer join|inner join)");
-        if (tables.containsKey(joins[0].split(" ")[0]) && tables.containsKey(joins[1].split(" ")[1])){
-            Table tb1 = tables.get(joins[0].split(" ")[0]);
-            Table tb2 = tables.get(joins[1].split(" ")[1]);
-
-            Table tempTable = new Table(tb1, tb2, join, on);
-
-            System.out.println(tempTable.selectAll());
-        }
-        return "Invalid select command.";
     }
 
     public String selectAll(String from, String columns) {
@@ -130,41 +96,32 @@ public class Database {
         else return "!Failed to query table " + from + " because it does not exist.";
     }
 
-    /**
-     * Drops the current database. Essentially self-destruct.
-     * @return True if self removal is successful.
-     * @throws Exception If table does not exist or if file is unable to be deleted.
-     */
-    public boolean dropDatabase() throws Exception {
-        for (Table t : tables.values()){
-            if (!t.drop()) throw new Exception("Table " + t.getName() + " was unable to be dropped. Cancelling DB dropDatabase.");
-        }
-        tables.clear();
-        return Files.deleteIfExists(Path.of("databases/" + dbName));
+    void put(Table t){
+        tables.put(t.getTableName(), t);
     }
 
-    /**
-     * Drops the given table.
-     * @param name Name of the table.
-     * @return True if table was successfully deleted.
-     * @throws Exception If table file was not deletable.
-     */
-    public boolean dropTable(String name) throws Exception {
-        if (tables.containsKey(name)){
-            return tables.remove(name).drop();
-        }
-        throw new Exception("!Failed to delete " + name + " because it does not exist.");
+    public boolean delete(){
+        return clearSubfiles(dbFile);
     }
 
-    /**
-     * @return Name of the database.
-     */
+    private boolean clearSubfiles(File f){
+        if (!f.isDirectory()) return false;
+        for (File subFile : Objects.requireNonNull(f.listFiles())){
+            if (subFile.isDirectory())
+                clearSubfiles(subFile);
+            else
+                subFile.delete();
+        }
+
+        return f.delete();
+    }
+
+    // Getters
     public String getDbName() {
         return dbName;
     }
-
-    /**
-     * @return Relative directory of the database.
-     */
-    public String getDbDirectory(){return "databases/" + dbName + "/";}
+    public String getDbDirectory(){return dbFile.toPath().toString();}
+    public Table getTable(String table){return tables.get(table);}
+    public boolean containsTable(String table){return tables.containsKey(table);}
+    public HashMap<String, Table> getTables(){return tables;}
 }

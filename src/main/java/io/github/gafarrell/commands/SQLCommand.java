@@ -4,15 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class SQLCommand {
-    protected static final String BLACK =   "\u001B[30m";
     protected static final String RED =     "\u001B[31m";
     protected static final String GREEN =   "\u001B[32m";
     protected static final String YELLOW =  "\u001B[33m";
-    protected static final String BLUE =    "\u001B[34m";
-    protected static final String PURPLE =  "\u001B[35m";
-    protected static final String CYAN =    "\u001B[36m";
-    protected static final String WHITE =   "\u001B[37m";
-
+    protected static final String WHITE =   "\u001B[38m";
 
     protected boolean successful = false;
     protected String commandMessage = "";
@@ -20,7 +15,7 @@ public abstract class SQLCommand {
     public abstract boolean execute() throws Exception;
 
     public String getCommandMessage() {
-        return commandMessage;
+        return commandMessage + WHITE;
     }
     public static boolean compare(Object obj1, Object obj2, String operator){
         if (obj1.getClass() != obj2.getClass()){

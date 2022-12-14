@@ -26,12 +26,14 @@ public class UpdateCmd extends SQLCommand {
             return false;
         }
 
-        if (DatabaseConnector.getInstance().notUsingDB()){
+        DatabaseConnector connector = DatabaseConnector.getInstance();
+
+        if (connector.notUsingDB()){
             commandMessage = RED + "! No database in use.";
             return false;
         }
 
-        Database current = DatabaseConnector.getInstance().getCurrent();
+        Database current = connector.getCurrent();
 
         if (!current.containsTable(table)){
             commandMessage = RED + "! Database " + current.getDbName() + " does not contain a table named " + table;
@@ -39,6 +41,12 @@ public class UpdateCmd extends SQLCommand {
         }
 
         Table currentTable = current.getTable(table);
+
+        if (connector.isTableLocked(currentTable)){
+            commandMessage = RED + "! Table " + table + " is locked.";
+            return false;
+        }
+
         String[] setTokens = set.split(" ");
         String[] whereTokens = where.split(" ");
 
@@ -46,6 +54,7 @@ public class UpdateCmd extends SQLCommand {
             commandMessage = RED + "! Table " + table + " does not contain column " + set;
             return false;
         }
+
         if (!currentTable.containsColumn(whereTokens[0])){
             commandMessage = RED + "! Table " + table + " does not contain column " + whereTokens[0];
             return false;
@@ -67,6 +76,7 @@ public class UpdateCmd extends SQLCommand {
             return true;
         }
 
+        if (connector.isTransactionActive()) connector.lockTable(currentTable);
         commandMessage = GREEN + dataCount + " entries modified.";
         return true;
     }

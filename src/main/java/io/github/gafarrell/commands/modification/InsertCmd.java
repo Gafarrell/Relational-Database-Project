@@ -20,11 +20,15 @@ public class InsertCmd extends SQLCommand {
 
     @Override
     public boolean execute() throws Exception {
-        if (DatabaseConnector.getInstance().notUsingDB()) {
+        // Database Connector and guarding statements.
+        DatabaseConnector connector = DatabaseConnector.getInstance();
+
+        if (connector.notUsingDB()) {
             commandMessage = RED + "! No database in use";
             return false;
         }
 
+        // Database and guarding statements.
         Database current = DatabaseConnector.getInstance().getCurrent();
 
         if (!current.containsTable(tableName)){
@@ -32,7 +36,15 @@ public class InsertCmd extends SQLCommand {
             return false;
         }
 
+        // Table and guarding statements
         Table target = current.getTable(tableName);
+
+        if (connector.isTableLocked(target)){
+            commandMessage = RED + "! Table " + tableName + " is locked.";
+            return false;
+        }
+
+        // Target columns and guarding statements.
         List<SQLColumn> targetColumns = target.getColumns();
 
         if (targetColumns.isEmpty()){
@@ -45,6 +57,7 @@ public class InsertCmd extends SQLCommand {
             return false;
         }
 
+        // Main algorithm.
         for (int i = 0; i < targetColumns.size(); i++){
             if (!targetColumns.get(i).queueData(parameters.get(i))){
                 commandMessage = RED + "!Invalid parameter type for column " + targetColumns.get(i).getTitle();
@@ -53,6 +66,13 @@ public class InsertCmd extends SQLCommand {
         }
 
         for (SQLColumn c : targetColumns) c.insertQueue();
+
+        // Closing actions.
+        if (connector.isTransactionActive()) connector.lockTable(target);
+        else{
+            target.save();
+        }
+
         commandMessage = GREEN + "Added entry";
         return true;
     }

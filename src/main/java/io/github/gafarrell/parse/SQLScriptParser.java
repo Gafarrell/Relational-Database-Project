@@ -7,11 +7,12 @@ import io.github.gafarrell.commands.creation.DatabaseCreateCmd;
 import io.github.gafarrell.commands.creation.DatabaseDropCmd;
 import io.github.gafarrell.commands.creation.TableCreateCmd;
 import io.github.gafarrell.commands.creation.TableDropCmd;
+import io.github.gafarrell.commands.locking.BeginTransactionCmd;
+import io.github.gafarrell.commands.locking.CommitCmd;
 import io.github.gafarrell.commands.modification.DeleteCmd;
 import io.github.gafarrell.commands.modification.InsertCmd;
 import io.github.gafarrell.commands.modification.TableAlterCmd;
 import io.github.gafarrell.commands.modification.UpdateCmd;
-import io.github.gafarrell.commands.query.JoinedSelect;
 import io.github.gafarrell.commands.query.SelectCmd;
 import io.github.gafarrell.commands.query.UseCmd;
 import io.github.gafarrell.database.DatabaseConnector;
@@ -26,11 +27,11 @@ import java.util.regex.Pattern;
 public class SQLScriptParser {
 
     private enum SQLCommandTokenizer{
-        CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+?)(\\((.+)\\)|$)", Pattern.CASE_INSENSITIVE)),
+        CREATE(Pattern.compile("CREATE (DATABASE|TABLE) (.+?) ?(\\((.+)\\)|$)", Pattern.CASE_INSENSITIVE)),
         USE(Pattern.compile("USE (.+)", Pattern.CASE_INSENSITIVE)),
         DELETE(Pattern.compile("DELETE FROM (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
         DROP(Pattern.compile("DROP (DATABASE|TABLE) (.+)", Pattern.CASE_INSENSITIVE)),
-        SELECT(Pattern.compile("SELECT (.+) FROM (.+?) (WHERE|$)(.+)?", Pattern.CASE_INSENSITIVE)),
+        SELECT(Pattern.compile("SELECT (.+) FROM (.+?) ?(WHERE|$)(.+)?", Pattern.CASE_INSENSITIVE)),
         ALTER(Pattern.compile("ALTER TABLE (.+) (ADD|DROP) (.+)", Pattern.CASE_INSENSITIVE)),
         UPDATE(Pattern.compile("UPDATE (.+) SET (.+) WHERE (.+)", Pattern.CASE_INSENSITIVE)),
         INSERT(Pattern.compile("INSERT INTO (.+) values\\((.+)\\)", Pattern.CASE_INSENSITIVE)),
@@ -101,7 +102,9 @@ public class SQLScriptParser {
                         commands.add(new DatabaseCreateCmd(matcher.group(2)));
                     else if (matcher.group(1).equalsIgnoreCase("table")){
                         String tableName = matcher.group(2);
-                        List<String> parameters = Arrays.asList(matcher.group(4).split(","));
+                        List<String> parameters = new ArrayList<>();
+                        Debug.writeLine(matcher.groupCount());
+                        if (matcher.groupCount() == 4) parameters = Arrays.asList(matcher.group(4).split(","));
                         commands.add(new TableCreateCmd(tableName, parameters));
                     }
                 }
@@ -115,12 +118,7 @@ public class SQLScriptParser {
                 }
 
                 case SELECT -> {
-                    if (matcher.groupCount() == 4 && (matcher.group(3).equalsIgnoreCase("on") || matcher.group(2).split(",").length > 1)){
-                        commands.add(new JoinedSelect(matcher.group(1), matcher.group(2), matcher.group(4)));
-                    }
-                    else {
-                        commands.add(new SelectCmd(matcher.group(2), matcher.group(1), matcher.groupCount() == 4 ? matcher.group(4) : ""));
-                    }
+                    commands.add(new SelectCmd(matcher.group(2), matcher.group(1), matcher.groupCount() == 4 ? matcher.group(4) : ""));
                 }
 
                 case INSERT -> {
@@ -128,20 +126,21 @@ public class SQLScriptParser {
                 }
 
                 case COMMIT -> {
-                    DatabaseConnector.getInstance().commit();
+                    commands.add(new CommitCmd());
                 }
 
                 case BEGIN_TRANSACTION -> {
-                    DatabaseConnector.getInstance().beginTransaction();
+                    commands.add(new BeginTransactionCmd());
                 }
             }
         }
     }
 
-    public void executeAllCommands() throws Exception {
+    public void executeAllCommands(){
         for (SQLCommand command : commands) {
             try {
                 command.execute();
+                System.out.println(command.getCommandMessage());
             } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
